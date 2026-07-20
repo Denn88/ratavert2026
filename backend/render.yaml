@@ -1,0 +1,33 @@
+# Alternative to railway.json — use this if you deploy to Render instead.
+# In Render: New -> Blueprint -> point at this repo, it reads this file automatically.
+services:
+  - type: web
+    name: ratavert-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: ratavert-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: PORT
+        value: 4000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DEVICE_KEY
+        generateValue: true
+      - key: SEED_ADMIN_USERNAME
+        value: admin
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: TRIGGER_COOLDOWN_SECONDS
+        value: 10
+      - key: DEVICE_OFFLINE_AFTER_SECONDS
+        value: 20
