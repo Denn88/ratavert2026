@@ -8,7 +8,8 @@ Type=simple
 User=__PI_USER__
 WorkingDirectory=__PI_HOME__/ratavert-pi
 EnvironmentFile=__PI_HOME__/ratavert-pi/.env
-ExecStart=/usr/bin/python3 __PI_HOME__/ratavert-pi/ratavert_client_example.py
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -u __PI_HOME__/ratavert-pi/ratavert_client_example.py
 Restart=always
 RestartSec=5
 StandardOutput=journal
