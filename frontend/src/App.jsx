@@ -816,6 +816,108 @@ function AccessDenied() {
 }
 
 // ── Dashboard Page ────────────────────────────────────────────────────────────
+// ── Admin dashboard: shortcut cards instead of live per-detection analytics.
+// Per the capstone's own scoping, admin manages the platform (accounts,
+// aggregate device health) — not any individual user's detection activity.
+function AdminDashboardCards({ rpiConnected, rpiIp, rpiOwner, accountCount, activeCount, onNavigate }) {
+  const cards = [
+    {
+      icon: "📊", title: "Weekly Report",
+      sub: "Aggregate device health & deterrence trends",
+      action: "View report →", onClick: () => onNavigate("activity"),
+    },
+    {
+      icon: "👥", title: "User Accounts",
+      sub: `${activeCount} active of ${accountCount} total`,
+      action: "Manage accounts →", onClick: () => onNavigate("admin"),
+    },
+    {
+      icon: rpiConnected ? "🟢" : "🔴", title: "System Health",
+      sub: rpiConnected ? `Device online${rpiIp ? ` · ${rpiIp}` : ""}${rpiOwner ? ` · ${rpiOwner}` : ""}` : "Device offline",
+      action: null, onClick: null,
+    },
+  ];
+  return (
+    <>
+      <div className="status-bar">
+        <div>
+          <div className="si-label">Admin overview</div>
+          <div className="si-val" style={{ color: "var(--accent)" }}>🛡 Platform management</div>
+          <div className="si-sub">Detection activity is managed by each registered user</div>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px", marginTop: "16px" }}>
+        {cards.map((c, i) => (
+          <div
+            key={i}
+            className="cc"
+            style={{ cursor: c.onClick ? "pointer" : "default", padding: "20px" }}
+            onClick={c.onClick || undefined}
+          >
+            <div style={{ fontSize: "28px", marginBottom: "8px" }}>{c.icon}</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "13px", fontWeight: "bold", marginBottom: "4px" }}>{c.title}</div>
+            <div style={{ fontSize: "12px", color: "var(--dim)", marginBottom: c.action ? "10px" : 0 }}>{c.sub}</div>
+            {c.action && <div style={{ fontSize: "11px", color: "var(--accent)" }}>{c.action}</div>}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ── Weekly Report — replaces the Activity page for admin. Aggregate-only,
+// matching FR-6x: device connectivity + deterrence outcome trends across the
+// week. Deliberately no per-detection photos or raw event log here.
+function WeeklyReportPage() {
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api.getWeeklyReport().then(setReport).catch((e) => setError(e.message || "Failed to load"));
+  }, []);
+
+  if (error) return <div className="lcard" style={{ padding: 20, color: "var(--red)" }}>⚠ Failed to load weekly report: {error}</div>;
+  if (!report) return <div className="lcard" style={{ padding: 20, color: "var(--dim)" }}>Loading weekly report…</div>;
+
+  const typeOrder = ["lights", "audio", "pepper", "last"];
+
+  return (
+    <>
+      <div className="status-bar">
+        {[
+          { label: "Report Period", val: "Last 7 days", sub: `${new Date(report.period.since).toLocaleDateString()} – ${new Date(report.period.until).toLocaleDateString()}` },
+          { label: "Device", val: report.device.online ? "🟢 Online" : "🔴 Offline", color: report.device.online ? "var(--accent)" : "var(--red)", sub: report.device.ip || "Not connected" },
+          { label: "Detections (7d)", val: report.detections.total, color: "var(--red)", sub: `${report.detections.escalated} escalated to Last Resort` },
+          { label: "Generated", val: new Date(report.generated_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }), sub: "auto-refreshes on load" },
+        ].map((s, i) => (
+          <div key={i}><div className="si-label">{s.label}</div>
+            <div className="si-val" style={{ color: s.color }}>{s.val}</div>
+            <div className="si-sub">{s.sub}</div></div>
+        ))}
+      </div>
+      <div className="lcard" style={{ marginTop: 16 }}>
+        <div className="lhdr"><span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Deterrence Outcome Trends — This Week</span></div>
+        <table className="ltable">
+          <thead><tr><th>Deterrent</th><th>Fired</th><th>Succeeded</th><th>Failed</th></tr></thead>
+          <tbody>
+            {typeOrder.map((t) => {
+              const row = report.deterrence[t] || { ok: 0, fail: 0 };
+              return (
+                <tr key={t}>
+                  <td>{TYPE_META[t]?.icon} {TYPE_META[t]?.label}</td>
+                  <td>{row.ok + row.fail}</td>
+                  <td style={{ color: "var(--accent)" }}>{row.ok}</td>
+                  <td style={{ color: row.fail > 0 ? "var(--red)" : "var(--dim)" }}>{row.fail}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
 function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiConnected, photoCount }) {
   const today = logs.filter((l) => { const d = new Date(); d.setHours(0, 0, 0, 0); return new Date(l.ts) >= d; }).length;
   const lastTs = logs[0];
@@ -886,117 +988,9 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
   );
 }
 
-function describeCameraError(e) {
-  const name = e?.name || "";
-  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-    return "Camera permission was denied. Click the camera/lock icon in the address bar, allow camera access, then try again.";
-  }
-  if (name === "NotFoundError" || name === "OverconstrainedError" || name === "DevicesNotFoundError") {
-    return "No camera was found. Make sure your webcam is connected and not already in use by another app (Zoom, Teams, Camera app, another browser tab), then try again.";
-  }
-  if (name === "NotReadableError" || name === "TrackStartError") {
-    return "The camera is busy — close any other app or browser tab using it, then try again.";
-  }
-  return "Camera access failed: " + (e?.message || String(e));
-}
-
-// ── Real webcam test capture — actually grabs a frame from the device camera
-// and uploads it through the same photo pipeline a Pi detection would use.
-// Useful for verifying storage/gallery/log wiring before the Pi is connected.
-function CaptureTest({ onCaptured }) {
-  const [active, setActive] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState(null); // {ok:boolean, msg:string}
-  const [preview, setPreview] = useState(null);
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const canvasRef = useRef(null);
-
-  async function start() {
-    setStatus(null);
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setStatus({ ok: false, msg: "This browser doesn't support camera access, or the page isn't loaded over localhost/HTTPS." });
-      return;
-    }
-    let stream;
-    try {
-      // Prefer a rear camera on phones; harmless "ideal" hint on laptops.
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
-    } catch {
-      try {
-        // Fall back to whatever camera is available at all (typical laptop webcam).
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      } catch (e2) {
-        setStatus({ ok: false, msg: describeCameraError(e2) });
-        return;
-      }
-    }
-    streamRef.current = stream;
-    setActive(true);
-    setPreview(null);
-    setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream; }, 0);
-  }
-  function stop() {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setActive(false);
-  }
-  function snap() {
-    if (!videoRef.current) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = video.videoWidth || 320;
-    canvas.height = video.videoHeight || 240;
-    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-    canvas.toBlob(
-      async (blob) => {
-        if (!blob) { setStatus({ ok: false, msg: "Could not capture frame" }); return; }
-        setPreview(URL.createObjectURL(blob));
-        setBusy(true);
-        try {
-          const entry = await api.uploadCapture(blob);
-          setStatus({ ok: true, msg: "✅ Uploaded and saved — check Activity → Photos" });
-          onCaptured && onCaptured(entry);
-        } catch (e) {
-          setStatus({ ok: false, msg: "⚠ " + (e.message || "Upload failed") });
-        } finally {
-          setBusy(false);
-        }
-      },
-      "image/jpeg",
-      0.9
-    );
-    stop();
-  }
-
-  useEffect(() => () => streamRef.current?.getTracks().forEach((t) => t.stop()), []);
-
-  return (
-    <div className="capture-card">
-      <div className="capture-hdr">
-        <span className="capture-title">📸 Webcam Test Capture</span>
-        <span style={{ fontSize: 11, color: "var(--dim)" }}>Uses this device's camera — a real end-to-end test of the photo pipeline, independent of the Pi</span>
-      </div>
-      <div className="capture-body">
-        <div className="capture-video-wrap">
-          {active ? <video ref={videoRef} autoPlay playsInline muted /> : preview ? <img src={preview} alt="Last capture" /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--dim)", fontSize: 24 }}>📷</div>}
-        </div>
-        <div className="capture-actions">
-          {!active && <button className="capture-btn" onClick={start}>▶ Start Camera</button>}
-          {active && <button className="capture-btn" onClick={snap} disabled={busy}>{busy ? "Uploading…" : "📸 Capture & Upload"}</button>}
-          {active && <button className="capture-btn stop" onClick={stop}>✕ Cancel</button>}
-          {status && <div className={`capture-status ${status.ok ? "ok" : "err"}`}>{status.msg}</div>}
-        </div>
-      </div>
-      <canvas ref={canvasRef} style={{ display: "none" }} />
-    </div>
-  );
-}
-
 // ── Real Pi camera test — asks the Raspberry Pi itself to grab a frame and
 // upload it, using the same capture_photo_path()/upload_photo() functions the
-// Pi already uses for real detections. Unlike CaptureTest above (which uses
-// THIS device's camera), this one actually confirms the Pi's webcam works.
+// Gives a real end-to-end test of the photo pipeline using the Pi's own camera.
 function PiCameraTest({ rpiConnected, piCamResult, onPiCamResult }) {
   const [pending, setPending] = useState(null); // command id we're waiting on
   const [status, setStatus] = useState(null);   // {ok:boolean, msg:string}
@@ -1048,7 +1042,7 @@ function PiCameraTest({ rpiConnected, piCamResult, onPiCamResult }) {
   );
 }
 
-function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, notice, onCaptured, piCamResult, onPiCamResult }) {
+function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, notice, piCamResult, onPiCamResult }) {
   const types = [
     { key: "lights", icon: "💡", name: "Lights",      desc: "Strobe / illuminate", danger: false },
     { key: "audio",  icon: "🔊", name: "Audio Alert", desc: "Broadcast alarm",     danger: false },
@@ -1073,7 +1067,6 @@ function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, 
         </div>
       )}
       <PiCameraTest rpiConnected={rpiConnected} piCamResult={piCamResult} onPiCamResult={onPiCamResult} />
-      <CaptureTest onCaptured={onCaptured} />
 
       <div className="tgrid">
         {types.map((t) => {
@@ -1790,13 +1783,6 @@ export default function App() {
         setRatAlert(true); setSeqStep(0); setLastNow(false);
         clearTimeout(ratAlertTimer.current);
         ratAlertTimer.current = setTimeout(() => setRatAlert(false), 60000);
-      } else if (evt.type === "capture") {
-        setLogs((prev) => (prev.some((l) => l.id === evt.payload.id) ? prev : [evt.payload, ...prev]).slice(0, 300));
-        setPhotos((prev) => {
-          const photoId = evt.payload.id.replace("det-", "");
-          if (prev.some((p) => p.id === photoId)) return prev;
-          return [{ id: photoId, ts: evt.payload.ts, tsStr: evt.payload.tsStr, dateStr: evt.payload.dateStr, confidence: null, url: evt.payload.photoId, actionsFired: [], escalated: false, type: "capture", isRat: false, capturedBy: evt.payload.user }, ...prev].slice(0, 100);
-        });
       } else if (evt.type === "trigger_ack" || evt.type === "trigger_requested") {
         const p = evt.payload;
         setLogs((prev) => {
@@ -1836,7 +1822,7 @@ export default function App() {
     catch (e) { flashToast(e.message); }
     finally { setAccountsLoading(false); }
   }
-  useEffect(() => { if (screen === "dashboard" && page === "admin") loadAccounts(); }, [screen, page]); // eslint-disable-line
+  useEffect(() => { if (screen === "dashboard" && isAdmin && (page === "admin" || page === "dashboard")) loadAccounts(); }, [screen, page, isAdmin]); // eslint-disable-line
 
   const counts = {
     lights: logs.filter((l) => l.type === "lights").length,
@@ -1904,7 +1890,7 @@ export default function App() {
   const MAIN_NAV = [
     { key: "dashboard", icon: "◈", label: "Dashboard" },
     { key: "triggers",  icon: "⚡", label: "Triggers" },
-    { key: "activity",  icon: "☰", label: "Activity" },
+    { key: "activity",  icon: isAdmin ? "📄" : "☰", label: isAdmin ? "Weekly Report" : "Activity" },
     { key: "analytics", icon: "📊", label: "Analytics" },
     { key: "settings",  icon: "⚙", label: "Settings" },
   ];
@@ -1985,9 +1971,11 @@ export default function App() {
         <div className="main">
           {ratAlert && <RatAlert seqStep={seqStep} lastNow={lastNow} onDismiss={() => setRatAlert(false)} />}
           <div className="content">
-            {page === "dashboard" && <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />}
+            {page === "dashboard" && (isAdmin
+              ? <AdminDashboardCards rpiConnected={rpiConnected} rpiIp={rpiIp} rpiOwner={rpiOwner} accountCount={accounts.length} activeCount={accounts.filter((a) => a.active).length} onNavigate={setPage} />
+              : <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />)}
             {page === "triggers" && <Triggers logs={logs} enabled={enabled} setEnabled={setEnabledOne} onFire={onFire} firingKey={firingKey} rpiConnected={rpiConnected} notice={triggerNotice} piCamResult={piCamResult} onPiCamResult={setPiCamResult} />}
-            {page === "activity" && <ActivityPage logs={logs} photos={photos} />}
+            {page === "activity" && (isAdmin ? <WeeklyReportPage /> : <ActivityPage logs={logs} photos={photos} />)}
             {page === "analytics" && <AnalyticsPage logs={logs} chartData={chart} counts={counts} ratCount={ratCount} />}
             {page === "settings" && (
               <Settings
