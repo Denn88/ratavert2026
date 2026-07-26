@@ -416,21 +416,36 @@ app.get("/api/analytics/hourly", requireUser, (req, res) => {
   res.json(buckets.map(({ _h, ...b }) => b));
 });
 
-// Real browser-webcam test capture — lets you verify the photo pipeline
-// end-to-end from the Triggers page without needing the Pi connected.
-app.post("/api/captures/photo", requireUser, upload.single("photo"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No photo uploaded (field name must be 'photo')" });
-  const id = uuid();
-  const now = new Date().toISOString();
-  db.prepare(
-    `INSERT INTO detections (id, timestamp, confidence, photo_path, actions_fired, escalated, created_at, source, captured_by)
-     VALUES (?,?,?,?,?,?,?,?,?)`
-  ).run(id, now, null, req.file.filename, "[]", 0, now, "manual", req.user.username);
+// Admin-only, aggregate-only report — per FR-6x this summarizes device
+// connectivity and deterrence trends across the week. Deliberately does NOT
+// expose individual detection photos or a per-event log; that's the
+// registered user's own view (Activity/Analytics), not the admin's.
+app.get("/api/admin/weekly-report", requireUser, requireAdmin, (req, res) => {
+  const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+  const until = new Date().toISOString();
 
-  const row = db.prepare("SELECT * FROM detections WHERE id = ?").get(id);
-  const entry = detectionToLogEntry(row);
-  broadcast("capture", entry);
-  res.status(201).json(entry);
+  const device = db.prepare("SELECT * FROM device WHERE id = 1").get() || {};
+  const detectionStats = db
+    .prepare("SELECT COUNT(*) AS total, COALESCE(SUM(escalated), 0) AS escalated FROM detections WHERE created_at >= ? AND source != 'manual'")
+    .get(since);
+
+  const triggerRows = db
+    .prepare("SELECT type, status, COUNT(*) AS c FROM trigger_events WHERE created_at >= ? GROUP BY type, status")
+    .all(since);
+  const deterrence = {};
+  for (const r of triggerRows) {
+    if (!deterrence[r.type]) deterrence[r.type] = { ok: 0, fail: 0 };
+    if (r.status === "ok") deterrence[r.type].ok += r.c;
+    else if (r.status === "fail") deterrence[r.type].fail += r.c;
+  }
+
+  res.json({
+    generated_at: until,
+    period: { since, until },
+    device: { online: !!device.online, ip: device.ip || null, owner: device.owner || null, last_seen: device.last_seen || null },
+    detections: { total: detectionStats.total, escalated: detectionStats.escalated },
+    deterrence,
+  });
 });
 
 app.get("/api/photos/:id", (req, res) => {
