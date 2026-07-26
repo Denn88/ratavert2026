@@ -993,7 +993,62 @@ function CaptureTest({ onCaptured }) {
   );
 }
 
-function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, notice, onCaptured }) {
+// ── Real Pi camera test — asks the Raspberry Pi itself to grab a frame and
+// upload it, using the same capture_photo_path()/upload_photo() functions the
+// Pi already uses for real detections. Unlike CaptureTest above (which uses
+// THIS device's camera), this one actually confirms the Pi's webcam works.
+function PiCameraTest({ rpiConnected, piCamResult, onPiCamResult }) {
+  const [pending, setPending] = useState(null); // command id we're waiting on
+  const [status, setStatus] = useState(null);   // {ok:boolean, msg:string}
+  const [photoUrl, setPhotoUrl] = useState(null);
+
+  useEffect(() => {
+    if (!piCamResult || !pending || piCamResult.command_id !== pending) return;
+    if (piCamResult.status === "ok" && piCamResult.photo_url) {
+      setPhotoUrl(api.photoUrl(piCamResult.photo_url));
+      setStatus({ ok: true, msg: "✅ Got a frame from the Pi" });
+    } else {
+      setStatus({ ok: false, msg: "⚠ Pi reported the capture failed — check its camera connection" });
+    }
+    setPending(null);
+    onPiCamResult && onPiCamResult(null);
+  }, [piCamResult, pending]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function testCamera() {
+    setStatus(null);
+    setPhotoUrl(null);
+    try {
+      const res = await api.testPiCamera();
+      setPending(res.id);
+      setStatus({ ok: true, msg: "Waiting for the Pi to respond…" });
+    } catch (e) {
+      setStatus({ ok: false, msg: e.message || "Could not reach the backend" });
+    }
+  }
+
+  return (
+    <div className="capture-card">
+      <div className="capture-hdr">
+        <span className="capture-title">🍓 Pi Camera Test</span>
+        <span style={{ fontSize: 11, color: "var(--dim)" }}>Asks the Raspberry Pi itself to capture a frame — a real test of its camera, not this device's</span>
+      </div>
+      <div className="capture-body">
+        <div className="capture-video-wrap">
+          {photoUrl ? <img src={photoUrl} alt="Frame from the Pi" /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--dim)", fontSize: 24 }}>🍓</div>}
+        </div>
+        <div className="capture-actions">
+          <button className="capture-btn" onClick={testCamera} disabled={!rpiConnected || !!pending}>
+            {pending ? "Waiting…" : "🍓 Test Pi Camera"}
+          </button>
+          {!rpiConnected && <div className="capture-status err">Pi is offline — connect it first</div>}
+          {status && <div className={`capture-status ${status.ok ? "ok" : "err"}`}>{status.msg}</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, notice, onCaptured, piCamResult, onPiCamResult }) {
   const types = [
     { key: "lights", icon: "💡", name: "Lights",      desc: "Strobe / illuminate", danger: false },
     { key: "audio",  icon: "🔊", name: "Audio Alert", desc: "Broadcast alarm",     danger: false },
@@ -1017,6 +1072,7 @@ function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, 
           {notice}
         </div>
       )}
+      <PiCameraTest rpiConnected={rpiConnected} piCamResult={piCamResult} onPiCamResult={onPiCamResult} />
       <CaptureTest onCaptured={onCaptured} />
 
       <div className="tgrid">
@@ -1691,6 +1747,7 @@ export default function App() {
   const [accounts, setAccounts] = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [piCamResult, setPiCamResult] = useState(null);
   const ratAlertTimer = useRef(null);
 
   const isAdmin = role === "admin";
@@ -1763,6 +1820,8 @@ export default function App() {
         setDetectingState(evt.payload.detecting); setDetIntState(evt.payload.detectionInterval);
       } else if (evt.type === "accounts_changed" && page === "admin") {
         loadAccounts();
+      } else if (evt.type === "pi_camera_test_result") {
+        setPiCamResult(evt.payload);
       }
     });
 
@@ -1927,7 +1986,7 @@ export default function App() {
           {ratAlert && <RatAlert seqStep={seqStep} lastNow={lastNow} onDismiss={() => setRatAlert(false)} />}
           <div className="content">
             {page === "dashboard" && <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />}
-            {page === "triggers" && <Triggers logs={logs} enabled={enabled} setEnabled={setEnabledOne} onFire={onFire} firingKey={firingKey} rpiConnected={rpiConnected} notice={triggerNotice} />}
+            {page === "triggers" && <Triggers logs={logs} enabled={enabled} setEnabled={setEnabledOne} onFire={onFire} firingKey={firingKey} rpiConnected={rpiConnected} notice={triggerNotice} piCamResult={piCamResult} onPiCamResult={setPiCamResult} />}
             {page === "activity" && <ActivityPage logs={logs} photos={photos} />}
             {page === "analytics" && <AnalyticsPage logs={logs} chartData={chart} counts={counts} ratCount={ratCount} />}
             {page === "settings" && (
