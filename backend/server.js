@@ -162,7 +162,7 @@ function triggerToLogEntry(t) {
     dateStr: fmtD(t.fired_at || t.created_at),
     type: t.type,
     user: t.requested_by || (t.source === "auto" ? "auto-detect" : "unknown"),
-    status: t.status === "fail" ? "fail" : "ok",
+    status: t.status === "ok" ? "ok" : t.status === "fail" ? "fail" : "pending",
     detail: t.detail || (t.source === "auto" ? "Auto-response: rat detected" : "Manual test"),
     isRat: false,
     isLast: !!t.is_last,
