@@ -56,20 +56,6 @@ export const api = {
   me: () => request("/api/me"),
   changePassword: (currentPassword, newPassword) => request("/api/auth/change-password", { method: "POST", body: { currentPassword, newPassword } }),
 
-  // Multipart upload — no JSON content-type, browser sets the boundary itself.
-  uploadCapture: async (blob) => {
-    const form = new FormData();
-    form.append("photo", blob, "capture.jpg");
-    const res = await fetch(`${API_URL}/api/captures/photo`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${getToken()}` },
-      body: form,
-    });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error((data && data.error) || `Upload failed (${res.status})`);
-    return data;
-  },
-
   getStatus: () => request("/api/status"),
   getSettings: () => request("/api/settings"),
   updateSettings: (patch) => request("/api/settings", { method: "POST", body: patch }),
@@ -90,6 +76,7 @@ export const api = {
     return request(`/api/detections${qs ? `?${qs}` : ""}`);
   },
   getHourlyAnalytics: () => request("/api/analytics/hourly"),
+  getWeeklyReport: () => request("/api/admin/weekly-report"),
 
   getAccounts: () => request("/api/accounts"),
   createAccount: (username, password, role) => request("/api/accounts", { method: "POST", body: { username, password, role } }),
