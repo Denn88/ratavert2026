@@ -34,11 +34,26 @@ if [[ -z "$DEVICE_KEY_ARG" || -z "$BACKEND_URL_ARG" ]]; then
 fi
 
 echo "==> Installing Python dependencies..."
-if ! pip3 install --quiet requests 2>/dev/null; then
+install_pip() {
   # Newer Raspberry Pi OS (Bookworm+) blocks system-wide pip installs by
   # default (PEP 668) — this flag is the standard, safe workaround here
   # since we're not touching any OS-managed packages.
-  pip3 install --quiet --break-system-packages requests
+  if ! pip3 install --quiet "$@" 2>/dev/null; then
+    pip3 install --quiet --break-system-packages "$@"
+  fi
+}
+
+if [[ -f "$SCRIPT_DIR/requirements.txt" ]]; then
+  echo "    Found requirements.txt — installing full ML stack (this can take"
+  echo "    20-40 minutes on a Pi 3B+, since ultralytics pulls in PyTorch)..."
+  install_pip -r "$SCRIPT_DIR/requirements.txt"
+else
+  echo "    No requirements.txt found next to install.sh — installing just"
+  echo "    'requests' so heartbeat/manual-trigger works. Detection (YOLO)"
+  echo "    will stay disabled until you add requirements.txt and re-run this,"
+  echo "    or install it yourself with:"
+  echo "      pip3 install --break-system-packages ultralytics requests picamera2"
+  install_pip requests
 fi
 
 echo "==> Copying client files to $INSTALL_DIR..."
