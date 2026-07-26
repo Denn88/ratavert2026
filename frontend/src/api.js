@@ -79,6 +79,7 @@ export const api = {
   getInstallCommand: () => request("/api/device/install-command"),
 
   fireTrigger: (type, duration = 2) => request("/api/trigger", { method: "POST", body: { type, duration } }),
+  testPiCamera: () => request("/api/pi-camera/test", { method: "POST" }),
 
   getLogs: (opts = {}) => {
     const qs = new URLSearchParams(opts).toString();
@@ -98,7 +99,7 @@ export const api = {
 };
 
 // ── Real-time event stream ───────────────────────────────────────────────────
-// Emits: 'detection' | 'trigger_ack' | 'trigger_requested' | 'status' | 'settings' | 'accounts_changed' | 'open' | 'close'
+// Emits: 'detection' | 'trigger_ack' | 'trigger_requested' | 'status' | 'settings' | 'accounts_changed' | 'pi_camera_test_result' | 'open' | 'close'
 export function connectEvents(onEvent) {
   let socket = null;
   let closedByUser = false;
