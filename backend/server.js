@@ -340,6 +340,20 @@ app.post("/api/trigger", requireUser, (req, res) => {
   res.status(202).json({ id: eventId, status: "pending" });
 });
 
+// ══════════════════════════════════════ PI CAMERA TEST (dashboard → Pi) ═════
+// Separate from /api/trigger on purpose: this doesn't actuate any hardware,
+// isn't subject to the deterrence cooldown, and doesn't create a trigger_event
+// row (there's nothing to arm/disarm or log as a deterrence action). It reuses
+// the same commands/ack polling plumbing the Pi already has for triggers.
+app.post("/api/pi-camera/test", requireUser, (req, res) => {
+  const cmdId = uuid();
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT INTO commands (id, type, duration, status, trigger_event_id, created_at) VALUES (?,?,?,?,?,?)`
+  ).run(cmdId, "pi_camera_test", 0, "pending", null, now);
+  res.status(202).json({ id: cmdId, status: "pending" });
+});
+
 // ══════════════════════════════════════ LOGS / DETECTIONS / PHOTOS ═══════════
 app.get("/api/logs", requireUser, (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 500);
@@ -481,12 +495,20 @@ app.post("/api/pi/detections", requireDevice, (req, res) => {
 });
 
 app.post("/api/pi/ack", requireDevice, (req, res) => {
-  const { type, status, fired_at, command_id } = req.body || {};
+  const { type, status, fired_at, command_id, photo_url } = req.body || {};
   let row = command_id ? db.prepare("SELECT * FROM commands WHERE id = ?").get(command_id) : null;
   if (!row) row = db.prepare("SELECT * FROM commands WHERE type = ? AND status != 'done' ORDER BY created_at DESC LIMIT 1").get(type);
   if (!row) return res.status(404).json({ error: "No matching pending command" });
 
   db.prepare("UPDATE commands SET status = 'done' WHERE id = ?").run(row.id);
+
+  if (row.type === "pi_camera_test") {
+    // No trigger_event exists for this command type — broadcast the photo
+    // straight to whoever's watching instead of touching trigger_events.
+    broadcast("pi_camera_test_result", { command_id: row.id, status: status === "ok" ? "ok" : "fail", photo_url: photo_url || null });
+    return res.json({ ok: true });
+  }
+
   if (row.trigger_event_id) {
     db.prepare("UPDATE trigger_events SET status = ?, fired_at = ? WHERE id = ?").run(
       status === "ok" ? "ok" : "fail",
