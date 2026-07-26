@@ -406,6 +406,7 @@ const css = `
   .tbc  { background:rgba(56,189,248,.1);  color:#38BDF8; }
   .sok  { color:var(--accent); font-size:10px; font-family:var(--font-mono); }
   .sfail{ color:var(--red);    font-size:10px; font-family:var(--font-mono); }
+  .spending{ color:var(--yellow); font-size:10px; font-family:var(--font-mono); }
   .new-r td { animation:fadeIn .4s ease; }
   .rat-r td { background:rgba(248,113,113,.025); }
   .lst-r td { background:rgba(251,146,60,.025); }
@@ -603,6 +604,11 @@ const AUTO_SEQ = ["lights", "audio", "pepper"];
 
 function fmtT(d) { return new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" }); }
 function fmtD(d) { return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }); }
+function statusBadge(status) {
+  if (status === "ok") return <span className="sok">● OK</span>;
+  if (status === "fail") return <span className="sfail">✕ FAIL</span>;
+  return <span className="spending">◌ PENDING</span>;
+}
 
 // ── Landing ───────────────────────────────────────────────────────────────────
 function LandingPage({ onLogin, theme, onToggleTheme }) {
@@ -869,7 +875,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
                 <td><span className="ts">{l.dateStr} {l.tsStr}</span></td>
                 <td>{l.isRat ? <span className="tbadge tbd">🐀 RAT</span> : l.isLast ? <span className="tbadge tblr">🚨 LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.icon} {TYPE_META[l.type]?.label}</span>}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.user}</td>
-                <td><span className={l.status === "ok" ? "sok" : "sfail"}>{l.status === "ok" ? "● OK" : "✕ FAIL"}</span></td>
+                <td>{statusBadge(l.status)}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
               </tr>
             ))}
@@ -1082,7 +1088,7 @@ function ActivityLogTable({ logs, onViewPhoto }) {
                 <td><span className="ts">{l.tsStr}</span></td>
                 <td>{l.isRat ? <span className="tbadge tbd">🐀 RAT</span> : l.isLast ? <span className="tbadge tblr">🚨 LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.icon} {TYPE_META[l.type]?.label}</span>}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.user}</td>
-                <td><span className={l.status === "ok" ? "sok" : "sfail"}>{l.status === "ok" ? "● OK" : "✕ FAIL"}</span></td>
+                <td>{statusBadge(l.status)}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
                 <td>{l.photoId ? <button className="photo-link-btn" onClick={() => onViewPhoto && onViewPhoto(l.photoId)}>📷 View</button> : <span style={{ color: "var(--muted)", fontSize: "10px" }}>—</span>}</td>
               </tr>
