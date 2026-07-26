@@ -77,11 +77,15 @@ ARMED = {"lights": True, "audio": True, "pepper": True, "last": True}
 
 # GPIO pin mapping — matches the wiring reference shown in the dashboard's
 # Settings → Device tab. Adjust to your actual wiring.
-GPIO_PINS = {"lights": 17, "audio": 27, "pepper": 22, "last": 18}
+# "last" (the snap trap) is deliberately excluded here — it's a servo that
+# needs an angle, not just on/off power, so it's handled separately below.
+GPIO_PINS = {"lights": 17, "audio": 27, "pepper": 22}
+SERVO_PIN = 18
 
 _model = None            # lazy-loaded YOLO model (loading it is slow — do it once)
 _camera = None           # lazy-initialized camera handle
-_gpio_devices = {}       # lazy-initialized gpiozero output devices
+_gpio_devices = {}       # lazy-initialized gpiozero output devices (relays)
+_trap_servo = None       # lazy-initialized gpiozero Servo (snap trap)
 
 
 # ── Camera ───────────────────────────────────────────────────────────────────
@@ -124,8 +128,38 @@ def capture_photo_path() -> str | None:
 
 
 # ── GPIO triggers ────────────────────────────────────────────────────────────
+def _get_trap_servo():
+    global _trap_servo
+    if _trap_servo is None:
+        from gpiozero import Servo
+        _trap_servo = Servo(SERVO_PIN)
+    return _trap_servo
+
+
+def _fire_trap(duration: float) -> bool:
+    """Swing the SG90 to trigger the snap trap, then return to neutral.
+    Uses gpiozero.Servo (PWM angle control) rather than a plain on/off
+    relay, since the trap needs to physically move, not just get power.
+    """
+    try:
+        servo = _get_trap_servo()
+        print(f"[HARDWARE] firing snap trap servo on GPIO{SERVO_PIN}")
+        servo.min()          # swing to trigger position — tune min()/max()
+        time.sleep(min(duration, 1.0))   # servos don't need long dwell time
+        servo.mid()          # return to neutral/rest position
+        time.sleep(0.3)      # let it settle before detaching
+        servo.detach()       # stop sending PWM so it doesn't jitter/buzz while idle
+        return True
+    except Exception as e:
+        print(f"[HARDWARE] snap trap servo failed: {e}")
+        return False
+
+
 def fire_trigger(trigger_type: str, duration: float) -> bool:
     """Actuate the physical hardware for `trigger_type`. Return True on success."""
+    if trigger_type == "last":
+        return _fire_trap(duration)
+
     pin = GPIO_PINS.get(trigger_type)
     if pin is None:
         print(f"[HARDWARE] no GPIO pin configured for '{trigger_type}'")
@@ -135,10 +169,25 @@ def fire_trigger(trigger_type: str, duration: float) -> bool:
         if trigger_type not in _gpio_devices:
             _gpio_devices[trigger_type] = OutputDevice(pin)
         dev = _gpio_devices[trigger_type]
-        print(f"[HARDWARE] firing {trigger_type} on GPIO{pin} for {duration}s")
-        dev.on()
-        time.sleep(duration)
-        dev.off()
+
+        if trigger_type == "lights":
+            # LED strobe: flash rather than hold steady, per the spec's
+            # "intermittent flashing light patterns" — a solid-on relay
+            # doesn't create the disruptive strobe effect.
+            print(f"[HARDWARE] strobing {trigger_type} on GPIO{pin} for {duration}s")
+            end_time = time.monotonic() + duration
+            flash_on_seconds = 0.1
+            flash_off_seconds = 0.1
+            while time.monotonic() < end_time:
+                dev.on()
+                time.sleep(flash_on_seconds)
+                dev.off()
+                time.sleep(flash_off_seconds)
+        else:
+            print(f"[HARDWARE] firing {trigger_type} on GPIO{pin} for {duration}s")
+            dev.on()
+            time.sleep(duration)
+            dev.off()
         return True
     except Exception as e:
         print(f"[HARDWARE] {trigger_type} failed: {e}")
@@ -218,6 +267,24 @@ def commands_loop():
         try:
             resp = requests.get(f"{BACKEND_URL}/api/pi/commands", headers=HEADERS, timeout=5)
             for cmd in resp.json():
+                if cmd["type"] == "pi_camera_test":
+                    # Not a hardware trigger — just grab a frame and report it back.
+                    photo_path = capture_photo_path()
+                    photo_url = upload_photo(photo_path) if photo_path else None
+                    requests.post(
+                        f"{BACKEND_URL}/api/pi/ack",
+                        headers=HEADERS,
+                        json={
+                            "command_id": cmd["id"],
+                            "type": "pi_camera_test",
+                            "status": "ok" if photo_url else "fail",
+                            "photo_url": photo_url,
+                            "fired_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        },
+                        timeout=15,
+                    )
+                    continue
+
                 ok = fire_trigger(cmd["type"], cmd.get("duration", 2))
                 requests.post(
                     f"{BACKEND_URL}/api/pi/ack",
