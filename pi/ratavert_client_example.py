@@ -1,23 +1,58 @@
 #!/usr/bin/env python3
 """
-RatAvert — example Raspberry Pi client.
+RatAvert — Raspberry Pi client (real YOLOv8n NCNN detection).
 
-This is a REFERENCE implementation showing exactly how the Pi should talk to
-the backend per the data contract in the build brief. Wire your real camera
-capture, YOLOv8 inference, and GPIO trigger code in where marked below.
+Wired up for: a custom-trained YOLOv8n model, exported to NCNN format,
+running on a Raspberry Pi 3B+ (or better).
 
-Install on the Pi:
-    pip3 install requests
+WHAT THIS SCRIPT DOES:
+  - Captures a frame from the camera on a timer
+  - Runs your NCNN model on it to check for a rat
+  - On detection: fires the lights/audio/pepper sequence (+ last resort if
+    still detected after N seconds), uploads the photo, reports the
+    detection to the backend
+  - Sends a heartbeat every 5s so the dashboard knows it's online
+  - Polls for manual test-fire commands from the dashboard every 2s
 
-Run:
-    DEVICE_KEY=<paste from backend .env>  BACKEND_URL=http://<backend-host>:4000 python3 ratavert_client_example.py
+═══════════════════════════════════ SETUP ═══════════════════════════════════
 
-What this script does, matching backend/server.js:
-  - Sends a heartbeat every 5s to POST /api/pi/heartbeat
-  - Polls GET /api/pi/commands every 2s for trigger commands queued by the
-    dashboard (manual test-fires), executes them, then acks via POST /api/pi/ack
-  - Runs your detection loop; when YOLOv8 confirms a rat, uploads the photo to
-    POST /api/pi/photos and then reports the detection to POST /api/pi/detections
+1. Raspberry Pi OS must be the 64-BIT version (Bookworm or later). The
+   32-bit ("armhf") image cannot install PyTorch/Ultralytics — this is the
+   single most common setup mistake. Check with:
+       getconf LONG_BIT      # must print 64, not 32
+
+2. Copy your exported NCNN model folder onto the Pi (the folder produced by
+   `model.export(format="ncnn")`, usually named something like
+   "best_ncnn_model" — it contains a .param and .bin file inside).
+   Put it at:  ~/ratavert-pi/model/   (or set MODEL_PATH below to wherever
+   you put it)
+
+3. Install dependencies (see requirements.txt in this same folder):
+       pip3 install --break-system-packages -r requirements.txt
+   This will take a while — ultralytics pulls in PyTorch, which is a large
+   download and slow to install on a Pi 3B+. Budget 20-40 minutes.
+   If you hit a memory error during install, add swap first:
+       sudo dphys-swapfile swapoff
+       sudo sed -i 's/CONF_SWAPSIZE=.*/CONF_SWAPSIZE=2048/' /etc/dphys-swapfile
+       sudo dphys-swapfile setup && sudo dphys-swapfile swapon
+
+4. Set these environment variables (the install.sh / systemd service already
+   handles DEVICE_KEY and BACKEND_URL — add these two alongside them in
+   ~/ratavert-pi/.env):
+       MODEL_PATH=/home/pi/ratavert-pi/model/best_ncnn_model
+       RAT_CLASS_NAME=rat          # must match your model's class name exactly
+       CONFIDENCE_THRESHOLD=0.6    # 0.0-1.0, tune based on your model
+       DETECTION_INTERVAL_SECONDS=10   # realistic for a Pi 3B+, see note below
+
+⚠️ PERFORMANCE ON A PI 3B+: this hardware is significantly slower than a Pi
+4/5. A single YOLOv8n NCNN inference typically takes several seconds here
+(vs. well under 1s on a Pi 4/5), and importing ultralytics itself can take
+30-60s on first run. This script is built for periodic checks, not live
+video — DETECTION_INTERVAL_SECONDS of 5-15s is realistic. If you need faster
+response, a Pi 4 (or better) is the practical upgrade path; the code here
+doesn't need to change either way.
+
+═══════════════════════════════════════════════════════════════════════════
 """
 
 from __future__ import annotations
@@ -28,35 +63,126 @@ import threading
 import requests
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:4000")
-DEVICE_KEY = os.environ["DEVICE_KEY"]  # required — copy from backend/.env
+DEVICE_KEY = os.environ["DEVICE_KEY"]  # required — copy from backend/.env or Railway Variables
 HEADERS = {"x-device-key": DEVICE_KEY}
 
+MODEL_PATH = os.environ.get("MODEL_PATH", "./model/best_ncnn_model")
+RAT_CLASS_NAME = os.environ.get("RAT_CLASS_NAME", "rat")
+CONFIDENCE_THRESHOLD = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.6"))
+DETECTION_INTERVAL_SECONDS = int(os.environ.get("DETECTION_INTERVAL_SECONDS", "10"))
+CAMERA_BACKEND = os.environ.get("CAMERA_BACKEND", "picamera2")  # "picamera2" or "usb"
+CAPTURE_PATH = "/tmp/ratavert_capture.jpg"
+
 ARMED = {"lights": True, "audio": True, "pepper": True, "last": True}
-DETECTION_INTERVAL_SECONDS = 20  # overwritten by /api/settings if you poll it
+
+# GPIO pin mapping — matches the wiring reference shown in the dashboard's
+# Settings → Device tab. Adjust to your actual wiring.
+GPIO_PINS = {"lights": 17, "audio": 27, "pepper": 22, "last": 18}
+
+_model = None            # lazy-loaded YOLO model (loading it is slow — do it once)
+_camera = None           # lazy-initialized camera handle
+_gpio_devices = {}       # lazy-initialized gpiozero output devices
 
 
-# ── GPIO trigger stubs — replace with your real relay/servo/sprayer code ────
-def fire_trigger(trigger_type: str, duration: float) -> bool:
-    """Actuate the physical hardware for `trigger_type`. Return True on success."""
-    print(f"[HARDWARE] firing {trigger_type} for {duration}s")
-    # e.g. GPIO.output(PIN_MAP[trigger_type], GPIO.HIGH); time.sleep(duration); GPIO.output(..., GPIO.LOW)
-    time.sleep(min(duration, 0.2))  # placeholder
-    return True
+# ── Camera ───────────────────────────────────────────────────────────────────
+def _get_camera():
+    global _camera
+    if _camera is not None:
+        return _camera
+    if CAMERA_BACKEND == "picamera2":
+        from picamera2 import Picamera2
+        cam = Picamera2()
+        cam.configure(cam.create_still_configuration(main={"size": (640, 640)}))
+        cam.start()
+        time.sleep(1)  # let auto-exposure settle
+        _camera = cam
+    else:
+        import cv2
+        cam = cv2.VideoCapture(0)
+        if not cam.isOpened():
+            raise RuntimeError("Could not open USB camera at index 0")
+        _camera = cam
+    return _camera
 
 
 def capture_photo_path() -> str | None:
-    """Capture a still from the camera and return a local file path, or None."""
-    # e.g. picam2.capture_file("/tmp/capture.jpg"); return "/tmp/capture.jpg"
-    return None
+    """Capture a still from the camera and return a local file path."""
+    cam = _get_camera()
+    try:
+        if CAMERA_BACKEND == "picamera2":
+            cam.capture_file(CAPTURE_PATH)
+        else:
+            import cv2
+            ok, frame = cam.read()
+            if not ok:
+                return None
+            cv2.imwrite(CAPTURE_PATH, frame)
+        return CAPTURE_PATH
+    except Exception as e:
+        print(f"[camera] capture failed: {e}")
+        return None
+
+
+# ── GPIO triggers ────────────────────────────────────────────────────────────
+def fire_trigger(trigger_type: str, duration: float) -> bool:
+    """Actuate the physical hardware for `trigger_type`. Return True on success."""
+    pin = GPIO_PINS.get(trigger_type)
+    if pin is None:
+        print(f"[HARDWARE] no GPIO pin configured for '{trigger_type}'")
+        return False
+    try:
+        from gpiozero import OutputDevice
+        if trigger_type not in _gpio_devices:
+            _gpio_devices[trigger_type] = OutputDevice(pin)
+        dev = _gpio_devices[trigger_type]
+        print(f"[HARDWARE] firing {trigger_type} on GPIO{pin} for {duration}s")
+        dev.on()
+        time.sleep(duration)
+        dev.off()
+        return True
+    except Exception as e:
+        print(f"[HARDWARE] {trigger_type} failed: {e}")
+        return False
+
+
+# ── YOLOv8n NCNN detection ───────────────────────────────────────────────────
+def _get_model():
+    global _model
+    if _model is not None:
+        return _model
+    print(f"[model] loading NCNN model from {MODEL_PATH} (this can take a while on a Pi 3B+)...")
+    from ultralytics import YOLO
+    _model = YOLO(MODEL_PATH, task="detect")
+    print("[model] loaded.")
+    return _model
 
 
 def run_yolo_detection() -> dict | None:
-    """Run one YOLOv8 inference pass. Return a detection dict if a rat is
-    confirmed above your confidence threshold, else None.
-    Expected shape: {"confidence": 0.91}
+    """Capture a frame and run one YOLOv8n NCNN inference pass. Returns
+    {"confidence": conf} if a rat is confirmed above threshold, else None.
     """
-    # e.g. results = model.predict(frame); if rat found: return {"confidence": conf}
-    return None
+    photo_path = capture_photo_path()
+    if not photo_path:
+        return None
+
+    model = _get_model()
+    results = model.predict(photo_path, verbose=False, conf=CONFIDENCE_THRESHOLD)
+    if not results:
+        return None
+
+    result = results[0]
+    best_conf = None
+    for box in result.boxes:
+        cls_id = int(box.cls[0])
+        cls_name = result.names.get(cls_id, str(cls_id))
+        conf = float(box.conf[0])
+        if cls_name == RAT_CLASS_NAME and conf >= CONFIDENCE_THRESHOLD:
+            if best_conf is None or conf > best_conf:
+                best_conf = conf
+
+    if best_conf is None:
+        return None
+    return {"confidence": best_conf, "photo_path": photo_path}
 
 
 # ── Heartbeat loop ───────────────────────────────────────────────────────────
@@ -126,15 +252,41 @@ def upload_photo(local_path: str) -> str | None:
 
 def detection_loop():
     auto_sequence = ["lights", "audio", "pepper"]
+
+    if not os.path.isdir(MODEL_PATH):
+        print(f"[detection] MODEL_PATH '{MODEL_PATH}' not found — detection is "
+              f"disabled for now (this is expected before running setup_model.sh). "
+              f"Heartbeat and manual test-fire commands still work normally.")
+        while True:
+            time.sleep(60)  # idle — nothing to do until a model is configured
+
+    print(f"[detection] checking every {DETECTION_INTERVAL_SECONDS}s, "
+          f"confidence threshold {CONFIDENCE_THRESHOLD}, class '{RAT_CLASS_NAME}'")
+    # Load the model once, up front, so the first real detection isn't
+    # delayed by a slow cold-start load. If this fails, log it clearly and
+    # keep the process alive (heartbeat/commands) instead of crash-looping.
+    try:
+        _get_model()
+    except Exception as e:
+        print(f"[detection] FAILED to load model: {e}")
+        print(f"[detection] detection is disabled until this is fixed — "
+              f"heartbeat and manual test-fire commands still work normally.")
+        while True:
+            time.sleep(60)
+
     while True:
         time.sleep(DETECTION_INTERVAL_SECONDS)
-        detection = run_yolo_detection()
+        try:
+            detection = run_yolo_detection()
+        except Exception as e:
+            print(f"[detection] inference failed: {e}")
+            continue
         if not detection:
             continue
 
         confidence = detection["confidence"]
-        photo_path = capture_photo_path()
-        photo_url = upload_photo(photo_path)
+        print(f"[detection] RAT CONFIRMED — confidence {confidence:.2f}")
+        photo_url = upload_photo(detection.get("photo_path"))
 
         actions_fired = []
         for trigger_type in auto_sequence:
@@ -144,7 +296,7 @@ def detection_loop():
                 actions_fired.append(trigger_type)
             time.sleep(3)  # matches the dashboard's 3s-apart sequence display
 
-        escalate = ARMED.get("last") and confidence > 0.85  # your own escalation rule
+        escalate = ARMED.get("last") and confidence > 0.85  # tune your own escalation rule
         if escalate:
             fire_trigger("last", 2)
 
