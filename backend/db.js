@@ -72,6 +72,23 @@ db.exec(`
     trigger_event_id TEXT,
     created_at  TEXT NOT NULL
   );
+
+  -- Stored, point-in-time snapshots — NOT computed live. Generated once,
+  -- automatically, every Sunday at 00:00, then frozen. This is the "weekly
+  -- report the user's IoT device sends to the admin," distinct from that
+  -- user's own always-live Activity page.
+  CREATE TABLE IF NOT EXISTS weekly_reports (
+    id                  TEXT PRIMARY KEY,
+    device_owner        TEXT,               -- username this device is bound to
+    device_ip           TEXT,
+    period_since        TEXT NOT NULL,
+    period_until        TEXT NOT NULL,
+    generated_at        TEXT NOT NULL,
+    detections_total    INTEGER NOT NULL DEFAULT 0,
+    detections_escalated INTEGER NOT NULL DEFAULT 0,
+    deterrence_json     TEXT NOT NULL DEFAULT '{}',
+    entries_json        TEXT NOT NULL DEFAULT '[]'
+  );
 `);
 
 // Migration: add columns used by manual (browser-webcam) test captures,
