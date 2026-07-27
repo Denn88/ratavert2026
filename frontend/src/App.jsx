@@ -819,22 +819,17 @@ function AccessDenied() {
 // ── Admin dashboard: shortcut cards instead of live per-detection analytics.
 // Per the capstone's own scoping, admin manages the platform (accounts,
 // aggregate device health) — not any individual user's detection activity.
-function AdminDashboardCards({ rpiConnected, rpiIp, rpiOwner, accountCount, activeCount, onNavigate }) {
+function AdminDashboardCards({ accountCount, activeCount, onNavigate }) {
   const cards = [
     {
       icon: "📊", title: "Weekly Report",
-      sub: "Aggregate device health & deterrence trends",
-      action: "View report →", onClick: () => onNavigate("activity"),
+      sub: "Auto-generated every Sunday — per-device activity sent to admin",
+      action: "View reports →", onClick: () => onNavigate("activity"),
     },
     {
       icon: "👥", title: "User Accounts",
       sub: `${activeCount} active of ${accountCount} total`,
       action: "Manage accounts →", onClick: () => onNavigate("admin"),
-    },
-    {
-      icon: rpiConnected ? "🟢" : "🔴", title: "System Health",
-      sub: rpiConnected ? `Device online${rpiIp ? ` · ${rpiIp}` : ""}${rpiOwner ? ` · ${rpiOwner}` : ""}` : "Device offline",
-      action: null, onClick: null,
     },
   ];
   return (
@@ -865,56 +860,108 @@ function AdminDashboardCards({ rpiConnected, rpiIp, rpiOwner, accountCount, acti
   );
 }
 
-// ── Weekly Report — replaces the Activity page for admin. Aggregate-only,
-// matching FR-6x: device connectivity + deterrence outcome trends across the
-// week. Deliberately no per-detection photos or raw event log here.
+// ── Weekly Report — replaces the Activity page for admin. This is the
+// stored, auto-generated (every Sunday 00:00) report the user's IoT device
+// sends to the admin — a two-level view: a compact list of reports, and a
+// detail drill-down that mirrors the user's own Activity table (plus status
+// and confidence), scoped to just that one report's week.
 function WeeklyReportPage() {
-  const [report, setReport] = useState(null);
+  const [reports, setReports] = useState(null);
   const [error, setError] = useState(null);
+  const [selected, setSelected] = useState(null); // null | "loading" | full report object
+  const [detailError, setDetailError] = useState(null);
+  const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    api.getWeeklyReport().then(setReport).catch((e) => setError(e.message || "Failed to load"));
-  }, []);
+  function loadList() {
+    api.getWeeklyReports().then(setReports).catch((e) => setError(e.message || "Failed to load"));
+  }
+  useEffect(() => { loadList(); }, []);
 
-  if (error) return <div className="lcard" style={{ padding: 20, color: "var(--red)" }}>⚠ Failed to load weekly report: {error}</div>;
-  if (!report) return <div className="lcard" style={{ padding: 20, color: "var(--dim)" }}>Loading weekly report…</div>;
+  function openDetail(id) {
+    setDetailError(null);
+    setSelected("loading");
+    api.getWeeklyReportDetail(id).then(setSelected).catch((e) => { setDetailError(e.message || "Failed to load"); setSelected(null); });
+  }
 
-  const typeOrder = ["lights", "audio", "pepper", "last"];
+  async function generateNow() {
+    setGenerating(true);
+    try { await api.generateWeeklyReportNow(); loadList(); }
+    catch (e) { setError(e.message || "Failed to generate"); }
+    finally { setGenerating(false); }
+  }
+
+  // ── Level 2: report detail ──────────────────────────────────────────────
+  if (selected) {
+    if (selected === "loading") return <div className="lcard" style={{ padding: 20, color: "var(--dim)" }}>Loading report…</div>;
+    if (detailError) return <div className="lcard" style={{ padding: 20, color: "var(--red)" }}>⚠ {detailError}</div>;
+    const r = selected;
+    return (
+      <>
+        <div className="lcard" style={{ padding: "14px 18px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <button className="capture-btn" onClick={() => setSelected(null)}>← Back to reports</button>
+          <button className="capture-btn" onClick={() => window.print()}>🖨 Print</button>
+        </div>
+        <div className="status-bar">
+          {[
+            { label: "Account",     val: r.device_owner || "—", sub: "IoT device owner" },
+            { label: "Device IP",   val: r.device_ip || "—", sub: "at time of report" },
+            { label: "Period",      val: `${new Date(r.period_since).toLocaleDateString()} – ${new Date(r.period_until).toLocaleDateString()}`, sub: "7-day window" },
+            { label: "Detections",  val: r.detections_total, color: "var(--red)", sub: `${r.detections_escalated} escalated to Last Resort` },
+          ].map((s, i) => (
+            <div key={i}><div className="si-label">{s.label}</div>
+              <div className="si-val" style={{ color: s.color }}>{s.val}</div>
+              <div className="si-sub">{s.sub}</div></div>
+          ))}
+        </div>
+        <div className="lcard" style={{ marginTop: 16 }}>
+          <div className="lhdr"><span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Activity Log — This Report's Week</span></div>
+          <table className="ltable">
+            <thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Status</th><th>Confidence</th><th>Detail</th></tr></thead>
+            <tbody>
+              {r.entries.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO ACTIVITY THIS WEEK</td></tr>}
+              {r.entries.map((l) => (
+                <tr key={l.id}>
+                  <td><span className="ts">{l.dateStr}</span></td>
+                  <td><span className="ts">{l.tsStr}</span></td>
+                  <td>{l.isRat ? <span className="tbadge tbd">🐀 RAT</span> : l.isLast ? <span className="tbadge tblr">🚨 LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.icon} {TYPE_META[l.type]?.label}</span>}</td>
+                  <td>{statusBadge(l.status)}</td>
+                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.confidence != null ? Math.round(l.confidence * 100) + "%" : "—"}</td>
+                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    );
+  }
+
+  // ── Level 1: compact, printable list of generated reports ───────────────
+  if (error) return <div className="lcard" style={{ padding: 20, color: "var(--red)" }}>⚠ Failed to load reports: {error}</div>;
+  if (!reports) return <div className="lcard" style={{ padding: 20, color: "var(--dim)" }}>Loading weekly reports…</div>;
 
   return (
-    <>
-      <div className="status-bar">
-        {[
-          { label: "Report Period", val: "Last 7 days", sub: `${new Date(report.period.since).toLocaleDateString()} – ${new Date(report.period.until).toLocaleDateString()}` },
-          { label: "Device", val: report.device.online ? "🟢 Online" : "🔴 Offline", color: report.device.online ? "var(--accent)" : "var(--red)", sub: report.device.ip || "Not connected" },
-          { label: "Detections (7d)", val: report.detections.total, color: "var(--red)", sub: `${report.detections.escalated} escalated to Last Resort` },
-          { label: "Generated", val: new Date(report.generated_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }), sub: "auto-refreshes on load" },
-        ].map((s, i) => (
-          <div key={i}><div className="si-label">{s.label}</div>
-            <div className="si-val" style={{ color: s.color }}>{s.val}</div>
-            <div className="si-sub">{s.sub}</div></div>
-        ))}
+    <div className="lcard">
+      <div className="lhdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Weekly Reports</span>
+        <button className="capture-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate now (test)"}</button>
       </div>
-      <div className="lcard" style={{ marginTop: 16 }}>
-        <div className="lhdr"><span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Deterrence Outcome Trends — This Week</span></div>
-        <table className="ltable">
-          <thead><tr><th>Deterrent</th><th>Fired</th><th>Succeeded</th><th>Failed</th></tr></thead>
-          <tbody>
-            {typeOrder.map((t) => {
-              const row = report.deterrence[t] || { ok: 0, fail: 0 };
-              return (
-                <tr key={t}>
-                  <td>{TYPE_META[t]?.icon} {TYPE_META[t]?.label}</td>
-                  <td>{row.ok + row.fail}</td>
-                  <td style={{ color: "var(--accent)" }}>{row.ok}</td>
-                  <td style={{ color: row.fail > 0 ? "var(--red)" : "var(--dim)" }}>{row.fail}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </>
+      <table className="ltable">
+        <thead><tr><th>Account</th><th>Device</th><th>Period</th><th>Generated</th><th /></tr></thead>
+        <tbody>
+          {reports.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO REPORTS YET — FIRST ONE GENERATES SUNDAY AT MIDNIGHT</td></tr>}
+          {reports.map((r) => (
+            <tr key={r.id}>
+              <td>{r.device_owner || "—"}</td>
+              <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
+              <td style={{ fontSize: "11px", color: "var(--dim)" }}>{new Date(r.period_since).toLocaleDateString()} – {new Date(r.period_until).toLocaleDateString()}</td>
+              <td><span className="ts">{new Date(r.generated_at).toLocaleString()}</span></td>
+              <td><button className="capture-btn" onClick={() => openDetail(r.id)}>View Details →</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -1914,8 +1961,8 @@ export default function App() {
           <button className="theme-toggle" onClick={toggleTheme}>{theme === "dark" ? "☀ Light" : "☾ Dark"}</button>
           <span className="nav-time">{fmtT(clock)}</span>
           {ratCount > 0 && <span className="nb nb-rat">🐀 {ratCount}</span>}
-          <span className={`nb ${rpiConnected ? "nb-rpi" : "nb-off"}`}>{rpiConnected ? "🍓 Online" : "🍓 Offline"}</span>
-          <span className="nb nb-live">● LIVE</span>
+          {!isAdmin && <span className={`nb ${rpiConnected ? "nb-rpi" : "nb-off"}`}>{rpiConnected ? "🍓 Online" : "🍓 Offline"}</span>}
+          {!isAdmin && <span className="nb nb-live">● LIVE</span>}
           <span className={`nb ${isAdmin ? "nb-admin" : "nb-user"}`}>{isAdmin ? "🛡 Admin" : "👤 User"}</span>
           <div className="nav-user">👤 {currentUser}</div>
           <button className="nav-out" onClick={signOut}>Sign Out</button>
@@ -1944,23 +1991,27 @@ export default function App() {
 
           <div className="sb-divider" />
 
-          <div className={`rpi-panel ${rpiConnected ? "" : "offline"}`}>
-            <div className="rpi-lbl">🍓 RASPBERRY PI</div>
-            <div className="rpi-stat" style={{ color: rpiConnected ? "var(--accent)" : "var(--red)" }}>
-              <span className="pdot" style={{ background: rpiConnected ? "var(--accent)" : "var(--red)" }} />
-              {rpiConnected ? "ONLINE" : "OFFLINE"}
-            </div>
-            <div className="rpi-ip">{rpiIp ? `IP: ${rpiIp}${rpiOwner ? ` · ${rpiOwner}` : ""}` : "Not connected"}</div>
-          </div>
+          {!isAdmin && (
+            <>
+              <div className={`rpi-panel ${rpiConnected ? "" : "offline"}`}>
+                <div className="rpi-lbl">🍓 RASPBERRY PI</div>
+                <div className="rpi-stat" style={{ color: rpiConnected ? "var(--accent)" : "var(--red)" }}>
+                  <span className="pdot" style={{ background: rpiConnected ? "var(--accent)" : "var(--red)" }} />
+                  {rpiConnected ? "ONLINE" : "OFFLINE"}
+                </div>
+                <div className="rpi-ip">{rpiIp ? `IP: ${rpiIp}${rpiOwner ? ` · ${rpiOwner}` : ""}` : "Not connected"}</div>
+              </div>
 
-          <div className={`det-panel ${detecting ? "active" : ""}`}>
-            <div className="det-lbl">DETECTION</div>
-            <div className="det-stat" style={{ color: detecting ? "var(--red)" : "var(--dim)" }}>
-              <span className="pdot" style={{ background: detecting ? "var(--red)" : "var(--muted)" }} />
-              {detecting ? "ACTIVE" : "PAUSED"}
-            </div>
-            <div className="det-cnt">🐀 {ratCount} detected</div>
-          </div>
+              <div className={`det-panel ${detecting ? "active" : ""}`}>
+                <div className="det-lbl">DETECTION</div>
+                <div className="det-stat" style={{ color: detecting ? "var(--red)" : "var(--dim)" }}>
+                  <span className="pdot" style={{ background: detecting ? "var(--red)" : "var(--muted)" }} />
+                  {detecting ? "ACTIVE" : "PAUSED"}
+                </div>
+                <div className="det-cnt">🐀 {ratCount} detected</div>
+              </div>
+            </>
+          )}
 
           <div className="sb-footer">
             <div><span className="pdot" style={{ background: "var(--accent)", marginRight: 6 }} />{isAdmin ? "Admin access" : "Standard access"}</div>
@@ -1972,7 +2023,7 @@ export default function App() {
           {ratAlert && <RatAlert seqStep={seqStep} lastNow={lastNow} onDismiss={() => setRatAlert(false)} />}
           <div className="content">
             {page === "dashboard" && (isAdmin
-              ? <AdminDashboardCards rpiConnected={rpiConnected} rpiIp={rpiIp} rpiOwner={rpiOwner} accountCount={accounts.length} activeCount={accounts.filter((a) => a.active).length} onNavigate={setPage} />
+              ? <AdminDashboardCards accountCount={accounts.length} activeCount={accounts.filter((a) => a.active).length} onNavigate={setPage} />
               : <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />)}
             {page === "triggers" && <Triggers logs={logs} enabled={enabled} setEnabled={setEnabledOne} onFire={onFire} firingKey={firingKey} rpiConnected={rpiConnected} notice={triggerNotice} piCamResult={piCamResult} onPiCamResult={setPiCamResult} />}
             {page === "activity" && (isAdmin ? <WeeklyReportPage /> : <ActivityPage logs={logs} photos={photos} />)}
