@@ -416,36 +416,116 @@ app.get("/api/analytics/hourly", requireUser, (req, res) => {
   res.json(buckets.map(({ _h, ...b }) => b));
 });
 
-// Admin-only, aggregate-only report — per FR-6x this summarizes device
-// connectivity and deterrence trends across the week. Deliberately does NOT
-// expose individual detection photos or a per-event log; that's the
-// registered user's own view (Activity/Analytics), not the admin's.
-app.get("/api/admin/weekly-report", requireUser, requireAdmin, (req, res) => {
-  const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+// ══════════════════════════════════════ WEEKLY REPORTS (admin) ══════════════
+// A report is a STORED SNAPSHOT, not a live query — generated automatically
+// every Sunday at 00:00, covering the 7 days since the last report (or the
+// last 7 days, on the very first run). This models "the user's IoT device
+// sends its week's activity to the admin," distinct from that same user's
+// own always-live Activity page.
+
+function generateWeeklyReport() {
+  const lastReport = db.prepare("SELECT * FROM weekly_reports ORDER BY period_until DESC LIMIT 1").get();
+  const since = lastReport ? lastReport.period_until : new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
   const until = new Date().toISOString();
-
   const device = db.prepare("SELECT * FROM device WHERE id = 1").get() || {};
-  const detectionStats = db
-    .prepare("SELECT COUNT(*) AS total, COALESCE(SUM(escalated), 0) AS escalated FROM detections WHERE created_at >= ? AND source != 'manual'")
-    .get(since);
 
+  const detectionRows = db
+    .prepare("SELECT * FROM detections WHERE created_at >= ? AND created_at < ? AND source != 'manual'")
+    .all(since, until);
   const triggerRows = db
-    .prepare("SELECT type, status, COUNT(*) AS c FROM trigger_events WHERE created_at >= ? GROUP BY type, status")
-    .all(since);
+    .prepare("SELECT * FROM trigger_events WHERE created_at >= ? AND created_at < ?")
+    .all(since, until);
+
   const deterrence = {};
-  for (const r of triggerRows) {
-    if (!deterrence[r.type]) deterrence[r.type] = { ok: 0, fail: 0 };
-    if (r.status === "ok") deterrence[r.type].ok += r.c;
-    else if (r.status === "fail") deterrence[r.type].fail += r.c;
+  for (const t of triggerRows) {
+    if (!deterrence[t.type]) deterrence[t.type] = { ok: 0, fail: 0 };
+    if (t.status === "ok") deterrence[t.type].ok++;
+    else if (t.status === "fail") deterrence[t.type].fail++;
   }
 
+  // Same shape the live Activity table already uses — so the report's detail
+  // view can reuse that exact rendering logic on the frontend.
+  const entries = [
+    ...detectionRows.map(detectionToLogEntry),
+    ...triggerRows.map(triggerToLogEntry),
+  ].sort((a, b) => new Date(b.ts) - new Date(a.ts));
+
+  const id = uuid();
+  db.prepare(
+    `INSERT INTO weekly_reports (id, device_owner, device_ip, period_since, period_until, generated_at, detections_total, detections_escalated, deterrence_json, entries_json)
+     VALUES (?,?,?,?,?,?,?,?,?,?)`
+  ).run(
+    id,
+    device.owner || null,
+    device.ip || null,
+    since,
+    until,
+    until,
+    detectionRows.length,
+    detectionRows.filter((d) => d.escalated).length,
+    JSON.stringify(deterrence),
+    JSON.stringify(entries)
+  );
+  console.log(`[weekly-report] generated ${id} covering ${since} → ${until} (${entries.length} entries)`);
+  return db.prepare("SELECT * FROM weekly_reports WHERE id = ?").get(id);
+}
+
+function msUntilNextSundayMidnight() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(24 * ((7 - now.getDay()) % 7 || 7), 0, 0, 0); // rolls to next Sunday 00:00
+  if (next <= now) next.setDate(next.getDate() + 7);
+  return next.getTime() - now.getTime();
+}
+
+function scheduleWeeklyReports() {
+  const delay = msUntilNextSundayMidnight();
+  console.log(`[weekly-report] next auto-generation in ${Math.round(delay / 3600000)}h`);
+  setTimeout(() => {
+    try { generateWeeklyReport(); } catch (e) { console.error("[weekly-report] generation failed:", e); }
+    setInterval(() => {
+      try { generateWeeklyReport(); } catch (e) { console.error("[weekly-report] generation failed:", e); }
+    }, 7 * 24 * 3600 * 1000);
+  }, delay);
+}
+scheduleWeeklyReports();
+
+function weeklyReportSummary(r) {
+  return {
+    id: r.id,
+    device_owner: r.device_owner,
+    device_ip: r.device_ip,
+    period_since: r.period_since,
+    period_until: r.period_until,
+    generated_at: r.generated_at,
+  };
+}
+
+// Level 1 — compact list: account, device, timestamp, nothing else.
+app.get("/api/admin/weekly-reports", requireUser, requireAdmin, (req, res) => {
+  const rows = db.prepare("SELECT * FROM weekly_reports ORDER BY generated_at DESC").all();
+  res.json(rows.map(weeklyReportSummary));
+});
+
+// Level 2 — full detail: same entry shape as the user's own Activity table,
+// including status and confidence, per what was asked for.
+app.get("/api/admin/weekly-reports/:id", requireUser, requireAdmin, (req, res) => {
+  const r = db.prepare("SELECT * FROM weekly_reports WHERE id = ?").get(req.params.id);
+  if (!r) return res.status(404).json({ error: "Report not found" });
   res.json({
-    generated_at: until,
-    period: { since, until },
-    device: { online: !!device.online, ip: device.ip || null, owner: device.owner || null, last_seen: device.last_seen || null },
-    detections: { total: detectionStats.total, escalated: detectionStats.escalated },
-    deterrence,
+    ...weeklyReportSummary(r),
+    detections_total: r.detections_total,
+    detections_escalated: r.detections_escalated,
+    deterrence: JSON.parse(r.deterrence_json || "{}"),
+    entries: JSON.parse(r.entries_json || "[]"),
   });
+});
+
+// Manual/testing helper — generates one immediately instead of waiting for
+// Sunday. Handy for demoing the feature; safe to remove once you don't need it.
+app.post("/api/admin/weekly-reports/generate", requireUser, requireAdmin, (req, res) => {
+  const r = generateWeeklyReport();
+  res.status(201).json(weeklyReportSummary(r));
 });
 
 app.get("/api/photos/:id", (req, res) => {
