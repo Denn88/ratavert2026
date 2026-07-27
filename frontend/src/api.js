@@ -76,7 +76,9 @@ export const api = {
     return request(`/api/detections${qs ? `?${qs}` : ""}`);
   },
   getHourlyAnalytics: () => request("/api/analytics/hourly"),
-  getWeeklyReport: () => request("/api/admin/weekly-report"),
+  getWeeklyReports: () => request("/api/admin/weekly-reports"),
+  getWeeklyReportDetail: (id) => request(`/api/admin/weekly-reports/${encodeURIComponent(id)}`),
+  generateWeeklyReportNow: () => request("/api/admin/weekly-reports/generate", { method: "POST" }),
 
   getAccounts: () => request("/api/accounts"),
   createAccount: (username, password, role) => request("/api/accounts", { method: "POST", body: { username, password, role } }),
