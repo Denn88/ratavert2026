@@ -5,6 +5,7 @@ services:
     name: ratavert-backend
     runtime: node
     plan: free
+    rootDir: backend
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/health
