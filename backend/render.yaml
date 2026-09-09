@@ -9,8 +9,6 @@ services:
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
-      - key: DATA_DIR
-        value: /data
       - key: PORT
         value: 4000
       - key: JWT_SECRET
