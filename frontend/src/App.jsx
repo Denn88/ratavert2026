@@ -982,6 +982,26 @@ function DeviceReportsPage() {
   if (!reports) return <div className="lcard" style={{ padding: 20, color: "var(--dim)" }}>Loading device reports…</div>;
 
   const monthlyRows = buildMonthlyRows(reports);
+  const rows = range === "weekly" ? reports : monthlyRows;
+
+  const totalReports = rows.length;
+  const totalDetections = rows.reduce((a, r) => a + (r.detections_total || 0), 0);
+  const totalEscalated = rows.reduce((a, r) => a + (r.detections_escalated || 0), 0);
+  const uniqueDevices = new Set(rows.map((r) => r.device_owner || "—")).size;
+  const lastGenerated = rows.length
+    ? rows.reduce((latest, r) => {
+        const t = range === "weekly" ? r.generated_at : r.lastSeen;
+        return !latest || new Date(t) > new Date(latest) ? t : latest;
+      }, null)
+    : null;
+  const resolvedPct = totalDetections ? Math.round(((totalDetections - totalEscalated) / totalDetections) * 100) : 0;
+  const avgPerReport = totalReports ? Math.round(totalDetections / totalReports) : 0;
+
+  // Chronological (oldest → newest), last 8 periods, for the bar chart.
+  const chartRows = [...rows]
+    .sort((a, b) => new Date(range === "weekly" ? a.generated_at : a.lastSeen) - new Date(range === "weekly" ? b.generated_at : b.lastSeen))
+    .slice(-8);
+  const chartMax = Math.max(...chartRows.map((r) => r.detections_total || 0), 1);
 
   return (
     <>
@@ -990,12 +1010,74 @@ function DeviceReportsPage() {
         <button className={`dr-tab ${range === "monthly" ? "active" : ""}`} onClick={() => setRange("monthly")}>Monthly</button>
       </div>
 
-      {range === "weekly" ? (
-        <div className="lcard">
-          <div className="lhdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Weekly Device Reports</span>
-            <button className="dr-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate now (test)"}</button>
+      <div className="status-bar">
+        {[
+          { label: "Report Type", val: range === "weekly" ? "WEEKLY" : "MONTHLY", color: "var(--accent)", sub: range === "weekly" ? "7-day snapshots" : "grouped by month" },
+          { label: "Total Detections", val: totalDetections, color: "var(--red)", sub: "across all periods" },
+          { label: "Escalated", val: totalEscalated, color: "var(--orange)", sub: "to Last Resort" },
+          { label: "Devices", val: uniqueDevices, color: "var(--teal)", sub: "reporting accounts" },
+          { label: "Last Generated", val: lastGenerated ? new Date(lastGenerated).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "--:--", color: "var(--accent)", sub: lastGenerated ? new Date(lastGenerated).toLocaleDateString() : "no reports yet" },
+        ].map((s, i) => (
+          <div key={i}><div className="si-label">{s.label}</div>
+            <div className="si-val" style={{ color: s.color }}>{s.val}</div>
+            <div className="si-sub">{s.sub}</div></div>
+        ))}
+      </div>
+
+      <div className="metrics">
+        {[
+          { cls: "mc1", label: "Reports", val: totalReports, sub: <span className="badge bg">stored snapshots</span> },
+          { cls: "mc2", label: "Resolution Rate", val: `${resolvedPct}%`, sub: <span style={{ color: "var(--teal)" }}>without escalation</span> },
+          { cls: "mc3", label: "Avg / Report", val: avgPerReport, sub: "detections" },
+          { cls: "mc4", label: "Escalated", val: totalEscalated, sub: <span className="badge br">to Last Resort</span> },
+        ].map((m, i) => (
+          <div key={i} className={`mc ${m.cls}`}>
+            <div className="mc-lbl">{m.label}</div>
+            <div className="mc-val">{m.val}</div>
+            <div className="mc-sub">{m.sub}</div>
           </div>
+        ))}
+      </div>
+
+      <div className="charts-row">
+        <div className="cc">
+          <div className="cc-hdr">
+            <span className="cc-title">Detections — Recent {range === "weekly" ? "Weeks" : "Months"}</span>
+            <div style={{ display: "flex", gap: "12px" }}>
+              <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--red)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--red)", display: "inline-block" }} />Detections</span>
+              <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--orange)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--orange)", display: "inline-block" }} />Escalated</span>
+            </div>
+          </div>
+          {chartRows.length === 0 ? (
+            <div style={{ color: "var(--dim)", fontSize: 12, textAlign: "center", padding: "50px 0" }}>Not enough data yet.</div>
+          ) : (
+            <div className="week-bars">
+              {chartRows.map((r, i) => (
+                <div className="week-col" key={i}>
+                  <div className="week-bar-pair">
+                    <div className="week-bar" style={{ height: `${Math.round(((r.detections_total || 0) / chartMax) * 120) + 2}px`, background: "var(--red)" }} title={`${r.detections_total} detections`} />
+                    <div className="week-bar" style={{ height: `${Math.round(((r.detections_escalated || 0) / chartMax) * 120) + 2}px`, background: "var(--orange)" }} title={`${r.detections_escalated} escalated`} />
+                  </div>
+                  <span className="week-lbl">
+                    {range === "weekly" ? new Date(r.period_since).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : (r.monthLabel || "").split(" ")[0].slice(0, 3)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="cc">
+          <div className="cc-hdr"><span className="cc-title">Resolved vs Escalated</span></div>
+          <ReportsDonut resolved={Math.max(totalDetections - totalEscalated, 0)} escalated={totalEscalated} />
+        </div>
+      </div>
+
+      <div className="lcard">
+        <div className="lhdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>{range === "weekly" ? "Weekly Device Reports" : "Monthly Device Reports"}</span>
+          {range === "weekly" && <button className="dr-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate now (test)"}</button>}
+        </div>
+        {range === "weekly" ? (
           <table className="ltable">
             <thead><tr><th>Account</th><th>Device</th><th>Period</th><th>Generated</th><th /></tr></thead>
             <tbody>
@@ -1011,12 +1093,7 @@ function DeviceReportsPage() {
               ))}
             </tbody>
           </table>
-        </div>
-      ) : (
-        <div className="lcard">
-          <div className="lhdr">
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Monthly Device Reports <span style={{ color: "var(--accent)", marginLeft: 6 }}>for maintenance</span></span>
-          </div>
+        ) : (
           <table className="ltable">
             <thead><tr><th>Account</th><th>Device</th><th>Month</th><th>Detections</th><th>Escalated</th><th>Last Seen</th></tr></thead>
             <tbody>
@@ -1033,9 +1110,44 @@ function DeviceReportsPage() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
     </>
+  );
+}
+
+// Two-color donut (resolved vs escalated) reusing the same .donut-ring / .donut
+// CSS the Dashboard's per-type DonutChart uses, generalized to two segments.
+function ReportsDonut({ resolved, escalated }) {
+  const total = resolved + escalated || 1;
+  const r = 36, cx = 46, cy = 46, circ = 2 * Math.PI * r;
+  const resolvedDash = (resolved / total) * circ;
+  return (
+    <div>
+      <div className="donut-ring">
+        <svg viewBox="0 0 92 92" className="donut" width="90" height="90">
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border)" strokeWidth="9" />
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--accent)" strokeWidth="9" strokeDasharray={`${resolvedDash} ${circ - resolvedDash}`} />
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--red)" strokeWidth="9" strokeDasharray={`${circ - resolvedDash} ${resolvedDash}`} strokeDashoffset={-resolvedDash} />
+        </svg>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+            <div style={{ width: "7px", height: "7px", borderRadius: "2px", background: "var(--accent)" }} />
+            <span style={{ color: "var(--dim)" }}>Resolved</span>
+          </div>
+          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>{resolved}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+            <div style={{ width: "7px", height: "7px", borderRadius: "2px", background: "var(--red)" }} />
+            <span style={{ color: "var(--dim)" }}>Escalated</span>
+          </div>
+          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>{escalated}</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
