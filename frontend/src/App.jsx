@@ -860,48 +860,9 @@ function AccessDenied() {
 }
 
 // ── Dashboard Page ────────────────────────────────────────────────────────────
-// ── Admin dashboard: shortcut cards instead of live per-detection analytics.
-// Per the capstone's own scoping, admin manages the platform (accounts,
-// aggregate device health) — not any individual user's detection activity.
-function AdminDashboardCards({ accountCount, activeCount, onNavigate }) {
-  const cards = [
-    {
-      title: "Device Reports",
-      sub: "Weekly & monthly device activity, per registered account — for maintenance",
-      action: "View reports →", onClick: () => onNavigate("activity"),
-    },
-    {
-      title: "User Accounts",
-      sub: `${activeCount} active of ${accountCount} total`,
-      action: "Manage accounts →", onClick: () => onNavigate("admin"),
-    },
-  ];
-  return (
-    <>
-      <div className="status-bar">
-        <div>
-          <div className="si-label">Admin overview</div>
-          <div className="si-val" style={{ color: "var(--accent)" }}>Platform management</div>
-          <div className="si-sub">Detection activity is managed by each registered user</div>
-        </div>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px", marginTop: "16px" }}>
-        {cards.map((c, i) => (
-          <div
-            key={i}
-            className="cc"
-            style={{ cursor: c.onClick ? "pointer" : "default", padding: "20px" }}
-            onClick={c.onClick || undefined}
-          >
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "13px", fontWeight: "bold", marginBottom: "4px" }}>{c.title}</div>
-            <div style={{ fontSize: "12px", color: "var(--dim)", marginBottom: c.action ? "10px" : 0 }}>{c.sub}</div>
-            {c.action && <div style={{ fontSize: "11px", color: "var(--accent)" }}>{c.action}</div>}
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
+// Note: admin now sees the same full Dashboard (stats bar, metrics, charts,
+// recent activity) as a regular user — Device Reports and Admin Panel remain
+// available as separate sidebar items for account/device management.
 
 // ── Device Reports (admin) ───────────────────────────────────────────────────
 // This replaces the old single "Weekly Report" page. It keeps the existing
@@ -2075,9 +2036,9 @@ export default function App() {
         <div className="main">
           {ratAlert && <RatAlert seqStep={seqStep} lastNow={lastNow} onDismiss={() => setRatAlert(false)} />}
           <div className="content">
-            {page === "dashboard" && (isAdmin
-              ? <AdminDashboardCards accountCount={accounts.length} activeCount={accounts.filter((a) => a.active).length} onNavigate={setPage} />
-              : <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />)}
+            {page === "dashboard" && (
+              <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />
+            )}
             {page === "triggers" && <Triggers logs={logs} enabled={enabled} setEnabled={setEnabledOne} onFire={onFire} firingKey={firingKey} rpiConnected={rpiConnected} notice={triggerNotice} />}
             {page === "activity" && (isAdmin ? <DeviceReportsPage /> : <ActivityPage logs={logs} photos={photos} />)}
             {page === "analytics" && <AnalyticsPage logs={logs} chartData={chart} counts={counts} ratCount={ratCount} />}
