@@ -566,6 +566,10 @@ const css = `
     color:var(--dim); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
   .dr-tab.active { background:rgba(16,185,129,.1); color:var(--accent); border-color:rgba(16,185,129,.3); }
   .dr-tab:hover:not(.active) { background:var(--panel); color:var(--text); }
+  .dr-btn { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:var(--panel);
+    color:var(--dim); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; font-family:var(--font-body); }
+  .dr-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); background:rgba(16,185,129,.08); }
+  .dr-btn:disabled { opacity:.5; cursor:not-allowed; }
 
   @media (max-width:900px) {
     .status-bar { grid-template-columns:repeat(3,1fr); }
@@ -936,8 +940,8 @@ function DeviceReportsPage() {
     return (
       <>
         <div className="lcard" style={{ padding: "14px 18px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <button className="capture-btn" onClick={() => setSelected(null)}>← Back to reports</button>
-          <button className="capture-btn" onClick={() => window.print()}>Print</button>
+          <button className="dr-btn" onClick={() => setSelected(null)}>← Back to reports</button>
+          <button className="dr-btn" onClick={() => window.print()}>Print</button>
         </div>
         <div className="status-bar">
           {[
@@ -990,7 +994,7 @@ function DeviceReportsPage() {
         <div className="lcard">
           <div className="lhdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Weekly Device Reports</span>
-            <button className="capture-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate now (test)"}</button>
+            <button className="dr-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate now (test)"}</button>
           </div>
           <table className="ltable">
             <thead><tr><th>Account</th><th>Device</th><th>Period</th><th>Generated</th><th /></tr></thead>
@@ -1002,7 +1006,7 @@ function DeviceReportsPage() {
                   <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
                   <td style={{ fontSize: "11px", color: "var(--dim)" }}>{new Date(r.period_since).toLocaleDateString()} – {new Date(r.period_until).toLocaleDateString()}</td>
                   <td><span className="ts">{new Date(r.generated_at).toLocaleString()}</span></td>
-                  <td><button className="capture-btn" onClick={() => openDetail(r.id)}>View Details →</button></td>
+                  <td><button className="dr-btn" onClick={() => openDetail(r.id)}>View Details →</button></td>
                 </tr>
               ))}
             </tbody>
