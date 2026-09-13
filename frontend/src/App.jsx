@@ -156,6 +156,15 @@ const css = `
   .spin { width:16px; height:16px; border:2px solid rgba(5,15,10,.3);
     border-top-color:var(--bg); border-radius:50%; animation:spin .7s linear infinite; }
 
+  /* ─── PASSWORD FIELD (with reveal toggle) ── */
+  .pwd-wrap { position:relative; display:flex; align-items:center; }
+  .pwd-wrap .login-in { padding-right:40px; }
+  .pwd-eye { position:absolute; right:8px; top:50%; transform:translateY(-50%);
+    background:none; border:none; padding:6px; cursor:pointer; color:var(--dim);
+    display:flex; align-items:center; justify-content:center; border-radius:6px; transition:color .15s; }
+  .pwd-eye:hover { color:var(--accent); }
+  .pwd-eye svg { width:16px; height:16px; }
+
   /* ─── THEME TOGGLE ── */
   .theme-toggle { display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:20px;
     background:var(--panel); border:1px solid var(--border); cursor:pointer;
@@ -352,23 +361,6 @@ const css = `
   .tbtn.rd:hover { background:rgba(248,113,113,.1); }
   .tbtn.now { background:rgba(16,185,129,.18); color:var(--accent); border-color:var(--accent); animation:flash .4s infinite; }
   .tlast { font-size:10px; color:var(--dim); font-family:var(--font-mono); margin-top:7px; }
-
-  /* WEBCAM TEST CAPTURE */
-  .capture-card { background:var(--surface); border:1px solid rgba(56,189,248,.3); border-radius:10px; padding:16px; margin-bottom:16px; }
-  .capture-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:8px; }
-  .capture-title { font-family:var(--font-mono); font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:#38BDF8; display:flex; align-items:center; gap:8px; }
-  .capture-body { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
-  .capture-video-wrap { width:220px; height:165px; border-radius:8px; overflow:hidden; background:#000; border:1px solid var(--border); flex-shrink:0; position:relative; }
-  .capture-video-wrap video, .capture-video-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
-  .capture-actions { display:flex; flex-direction:column; gap:8px; flex:1; min-width:180px; }
-  .capture-btn { padding:9px 16px; border-radius:6px; border:1px solid #38BDF8; background:rgba(56,189,248,.1);
-    color:#38BDF8; font-weight:600; font-size:13px; cursor:pointer; transition:all .15s; font-family:var(--font-body); }
-  .capture-btn:hover:not(:disabled) { background:rgba(56,189,248,.2); }
-  .capture-btn:disabled { opacity:.5; cursor:not-allowed; }
-  .capture-btn.stop { border-color:var(--red); color:var(--red); background:rgba(248,113,113,.08); }
-  .capture-status { font-size:11px; font-family:var(--font-mono); color:var(--dim); }
-  .capture-status.ok  { color:var(--accent); }
-  .capture-status.err { color:var(--red); }
 
   /* TABS (Activity: Log / Photos) */
   .tabbar { display:flex; gap:6px; margin-bottom:14px; }
@@ -568,6 +560,13 @@ const css = `
   .hbar-fill { height:100%; border-radius:6px; transition:width .4s ease; }
   .hbar-val { width:34px; text-align:right; font-family:var(--font-mono); font-size:11px; color:var(--text); flex-shrink:0; }
 
+  /* DEVICE REPORTS — weekly / monthly toggle */
+  .dr-tabs { display:flex; gap:6px; margin-bottom:14px; }
+  .dr-tab { padding:8px 18px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
+    color:var(--dim); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
+  .dr-tab.active { background:rgba(16,185,129,.1); color:var(--accent); border-color:rgba(16,185,129,.3); }
+  .dr-tab:hover:not(.active) { background:var(--panel); color:var(--text); }
+
   @media (max-width:900px) {
     .status-bar { grid-template-columns:repeat(3,1fr); }
     .metrics    { grid-template-columns:repeat(2,1fr); }
@@ -610,11 +609,55 @@ function statusBadge(status) {
   return <span className="spending">◌ PENDING</span>;
 }
 
+// ── Eye / Eye-off icons (inline SVG, no new dependencies) ───────────────────
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+function EyeOffIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.6 18.6 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a18.6 18.6 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+      <path d="M1 1l22 22" />
+    </svg>
+  );
+}
+
+// ── Password input with reveal toggle (used for every password field) ──────
+function PasswordField({ value, onChange, placeholder, onKeyDown, className = "login-in", error }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="pwd-wrap">
+      <input
+        className={`${className} ${error ? "err" : ""}`}
+        type={visible ? "text" : "password"}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+      />
+      <button
+        type="button"
+        className="pwd-eye"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Hide password" : "Show password"}
+        tabIndex={-1}
+      >
+        {visible ? <EyeOffIcon /> : <EyeIcon />}
+      </button>
+    </div>
+  );
+}
+
 // ── Landing ───────────────────────────────────────────────────────────────────
 function LandingPage({ onLogin, theme, onToggleTheme }) {
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = setInterval(() => setTick((v) => v + 1), 2000); return () => clearInterval(t); }, []);
-  const seq = ["💡 LIGHTS", "🔊 AUDIO", "🌿 PEPPER", "🚨 LAST"];
+  const seq = ["LIGHTS", "AUDIO", "PEPPER", "LAST"];
   const ai = tick % 4;
   return (
     <div className="landing">
@@ -632,7 +675,7 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
         <h1 className="hero-title">Smart Rat<br /><span>Deterrence</span><br />System</h1>
         <p className="hero-sub">Real-time detection + multi-sensory response. Lights, audio, peppermint, and adaptive trapping — with every detection captured on camera by your own Raspberry Pi.</p>
         <div className="hero-cta">
-          <button className="cta-p" onClick={onLogin}>⚡ Open Dashboard</button>
+          <button className="cta-p" onClick={onLogin}>Open Dashboard</button>
         </div>
         <div className="hero-device">
           <div className="hd-bar">
@@ -646,7 +689,7 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
           <div className="hd-stats">
             <div className="hd-stat"><div className="hd-sval" style={{ color: "var(--red)" }}>--</div><div className="hd-slbl">Rats Today</div></div>
             <div className="hd-stat"><div className="hd-sval" style={{ color: "var(--accent)" }}>--</div><div className="hd-slbl">Armed</div></div>
-            <div className="hd-stat"><div className="hd-sval" style={{ color: "var(--teal)" }}>🍓</div><div className="hd-slbl">Sign in to view</div></div>
+            <div className="hd-stat"><div className="hd-sval" style={{ color: "var(--teal)" }}>--</div><div className="hd-slbl">Sign in to view</div></div>
           </div>
           <div className="hd-seq">
             {seq.map((s, i) => <div key={i} className={`hd-si ${i < ai ? "a" : i === ai ? "f" : ""}`}>{s}</div>)}
@@ -655,15 +698,14 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
       </section>
       <section className="land-feats">
         {[
-          { icon: "🎯", title: "YOLOv8 Detection", desc: "Computer vision model trained on rat images, running real-time inference on Raspberry Pi edge hardware." },
-          { icon: "🔊", title: "Multi-Sensory Response", desc: "Ultrasonic sound, LED strobe, and peppermint oil diffusion activate in sequence to deter rats without chemicals." },
-          { icon: "🎲", title: "Anti-Habituation Trap", desc: "Servo-controlled snap trap fires using randomized timing so rats cannot predict or adapt to the pattern." },
-          { icon: "📷", title: "Photo Capture", desc: "Every detection saves a timestamped photo from the Pi camera, viewable anytime in Activity → Photos." },
-          { icon: "🍓", title: "Guided Setup", desc: "Connect your Raspberry Pi in three simple steps from Settings — no manual code editing required." },
-          { icon: "📊", title: "Reports & Analytics", desc: "Detection frequency, deterrence effectiveness, and confidence distributions — exportable for documentation." },
+          { title: "YOLOv8 Detection", desc: "Computer vision model trained on rat images, running real-time inference on Raspberry Pi edge hardware." },
+          { title: "Multi-Sensory Response", desc: "Ultrasonic sound, LED strobe, and peppermint oil diffusion activate in sequence to deter rats without chemicals." },
+          { title: "Anti-Habituation Trap", desc: "Servo-controlled snap trap fires using randomized timing so rats cannot predict or adapt to the pattern." },
+          { title: "Photo Capture", desc: "Every detection saves a timestamped photo from the Pi camera, viewable anytime in Activity → Photos." },
+          { title: "Guided Setup", desc: "Connect your Raspberry Pi in three simple steps from Settings — no manual code editing required." },
+          { title: "Reports & Analytics", desc: "Detection frequency, deterrence effectiveness, and confidence distributions — exportable for documentation." },
         ].map((f, i) => (
           <div className="feat" key={i} style={{ animationDelay: `${i * 0.08}s` }}>
-            <span className="feat-icon">{f.icon}</span>
             <div className="feat-title">{f.title}</div>
             <div className="feat-desc">{f.desc}</div>
           </div>
@@ -706,7 +748,7 @@ function LoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
         <div className="login-brand"><span className="pdot" style={{ background: "var(--accent)" }} />RATAVERT</div>
         <div className="login-sub">// SECURE ACCESS · MONITORING SYSTEM</div>
 
-        {err && <div className="login-err"><span>⚠</span>{err}</div>}
+        {err && <div className="login-err">{err}</div>}
 
         <div className="login-field">
           <label className="login-lbl">Username</label>
@@ -716,9 +758,13 @@ function LoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
         </div>
         <div className="login-field">
           <label className="login-lbl">Password</label>
-          <input className={`login-in ${err ? "err" : ""}`} type="password" placeholder="Password"
-            value={pass} onChange={(e) => { setPass(e.target.value); setErr(""); }}
-            onKeyDown={(e) => e.key === "Enter" && doLogin()} />
+          <PasswordField
+            value={pass}
+            placeholder="Password"
+            error={!!err}
+            onChange={(e) => { setPass(e.target.value); setErr(""); }}
+            onKeyDown={(e) => e.key === "Enter" && doLogin()}
+          />
         </div>
 
         <button className="login-btn" onClick={doLogin} disabled={loading}>
@@ -791,14 +837,13 @@ function DonutChart({ totals }) {
 }
 
 function RatAlert({ seqStep, lastNow, onDismiss }) {
-  const steps = ["💡 LIGHTS", "🔊 AUDIO", "🌿 PEPPER"];
+  const steps = ["LIGHTS", "AUDIO", "PEPPER"];
   return (
     <div className="rat-alert">
-      <span className="rat-icon">🐀</span>
       <div className="rat-msg">⚠ RAT DETECTED — AUTO-RESPONSE ACTIVE</div>
       <div className="seq-row">
         {steps.map((s, i) => <span key={i} className={`ss ${i < seqStep ? "done" : i === seqStep ? "now" : "wait"}`}>{s}</span>)}
-        <span className={`ss ${lastNow ? "last-now" : "wait"}`}>🚨 LAST RESORT</span>
+        <span className={`ss ${lastNow ? "last-now" : "wait"}`}>LAST RESORT</span>
       </div>
       <button className="dismiss" onClick={onDismiss}>✕ CLEAR</button>
     </div>
@@ -808,7 +853,6 @@ function RatAlert({ seqStep, lastNow, onDismiss }) {
 function AccessDenied() {
   return (
     <div className="access-denied">
-      <div className="ad-icon">🔒</div>
       <div className="ad-title">ACCESS DENIED</div>
       <div className="ad-sub">You don't have permission to view this page.<br />Contact an administrator.</div>
     </div>
@@ -822,12 +866,12 @@ function AccessDenied() {
 function AdminDashboardCards({ accountCount, activeCount, onNavigate }) {
   const cards = [
     {
-      icon: "📊", title: "Weekly Report",
-      sub: "Auto-generated every Sunday — per-device activity sent to admin",
+      title: "Device Reports",
+      sub: "Weekly & monthly device activity, per registered account — for maintenance",
       action: "View reports →", onClick: () => onNavigate("activity"),
     },
     {
-      icon: "👥", title: "User Accounts",
+      title: "User Accounts",
       sub: `${activeCount} active of ${accountCount} total`,
       action: "Manage accounts →", onClick: () => onNavigate("admin"),
     },
@@ -837,7 +881,7 @@ function AdminDashboardCards({ accountCount, activeCount, onNavigate }) {
       <div className="status-bar">
         <div>
           <div className="si-label">Admin overview</div>
-          <div className="si-val" style={{ color: "var(--accent)" }}>🛡 Platform management</div>
+          <div className="si-val" style={{ color: "var(--accent)" }}>Platform management</div>
           <div className="si-sub">Detection activity is managed by each registered user</div>
         </div>
       </div>
@@ -849,7 +893,6 @@ function AdminDashboardCards({ accountCount, activeCount, onNavigate }) {
             style={{ cursor: c.onClick ? "pointer" : "default", padding: "20px" }}
             onClick={c.onClick || undefined}
           >
-            <div style={{ fontSize: "28px", marginBottom: "8px" }}>{c.icon}</div>
             <div style={{ fontFamily: "var(--font-mono)", fontSize: "13px", fontWeight: "bold", marginBottom: "4px" }}>{c.title}</div>
             <div style={{ fontSize: "12px", color: "var(--dim)", marginBottom: c.action ? "10px" : 0 }}>{c.sub}</div>
             {c.action && <div style={{ fontSize: "11px", color: "var(--accent)" }}>{c.action}</div>}
@@ -860,12 +903,17 @@ function AdminDashboardCards({ accountCount, activeCount, onNavigate }) {
   );
 }
 
-// ── Weekly Report — replaces the Activity page for admin. This is the
-// stored, auto-generated (every Sunday 00:00) report the user's IoT device
-// sends to the admin — a two-level view: a compact list of reports, and a
-// detail drill-down that mirrors the user's own Activity table (plus status
-// and confidence), scoped to just that one report's week.
-function WeeklyReportPage() {
+// ── Device Reports (admin) ───────────────────────────────────────────────────
+// This replaces the old single "Weekly Report" page. It keeps the existing
+// weekly snapshots (weekly_reports table, generated every Sunday 00:00,
+// fetched via api.getWeeklyReports()) as the WEEKLY tab exactly as before,
+// and adds a MONTHLY tab that groups those same per-device weekly snapshots
+// by calendar month — no backend/schema change needed since every field the
+// monthly rollup needs (device_owner, device_ip, detections_total,
+// detections_escalated, period_since/until, generated_at) is already stored
+// per weekly snapshot.
+function DeviceReportsPage() {
+  const [range, setRange] = useState("weekly"); // "weekly" | "monthly"
   const [reports, setReports] = useState(null);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null); // null | "loading" | full report object
@@ -890,7 +938,36 @@ function WeeklyReportPage() {
     finally { setGenerating(false); }
   }
 
-  // ── Level 2: report detail ──────────────────────────────────────────────
+  // Group the stored weekly snapshots by (device_owner, calendar month of
+  // period_since) to produce a maintenance-friendly monthly rollup per device.
+  function buildMonthlyRows(list) {
+    const byKey = new Map();
+    list.forEach((r) => {
+      const d = new Date(r.period_since);
+      const monthKey = `${r.device_owner || "—"}::${d.getFullYear()}-${d.getMonth()}`;
+      if (!byKey.has(monthKey)) {
+        byKey.set(monthKey, {
+          key: monthKey,
+          device_owner: r.device_owner,
+          device_ip: r.device_ip,
+          monthLabel: d.toLocaleDateString(undefined, { month: "long", year: "numeric" }),
+          detections_total: 0,
+          detections_escalated: 0,
+          reportCount: 0,
+          lastSeen: r.generated_at,
+        });
+      }
+      const row = byKey.get(monthKey);
+      row.detections_total += r.detections_total || 0;
+      row.detections_escalated += r.detections_escalated || 0;
+      row.reportCount += 1;
+      row.device_ip = r.device_ip || row.device_ip;
+      if (new Date(r.generated_at) > new Date(row.lastSeen)) row.lastSeen = r.generated_at;
+    });
+    return Array.from(byKey.values()).sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
+  }
+
+  // ── Level 2: weekly report detail (unchanged) ────────────────────────────
   if (selected) {
     if (selected === "loading") return <div className="lcard" style={{ padding: 20, color: "var(--dim)" }}>Loading report…</div>;
     if (detailError) return <div className="lcard" style={{ padding: 20, color: "var(--red)" }}>⚠ {detailError}</div>;
@@ -899,7 +976,7 @@ function WeeklyReportPage() {
       <>
         <div className="lcard" style={{ padding: "14px 18px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <button className="capture-btn" onClick={() => setSelected(null)}>← Back to reports</button>
-          <button className="capture-btn" onClick={() => window.print()}>🖨 Print</button>
+          <button className="capture-btn" onClick={() => window.print()}>Print</button>
         </div>
         <div className="status-bar">
           {[
@@ -923,7 +1000,7 @@ function WeeklyReportPage() {
                 <tr key={l.id}>
                   <td><span className="ts">{l.dateStr}</span></td>
                   <td><span className="ts">{l.tsStr}</span></td>
-                  <td>{l.isRat ? <span className="tbadge tbd">🐀 RAT</span> : l.isLast ? <span className="tbadge tblr">🚨 LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.icon} {TYPE_META[l.type]?.label}</span>}</td>
+                  <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
                   <td>{statusBadge(l.status)}</td>
                   <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.confidence != null ? Math.round(l.confidence * 100) + "%" : "—"}</td>
                   <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
@@ -936,32 +1013,64 @@ function WeeklyReportPage() {
     );
   }
 
-  // ── Level 1: compact, printable list of generated reports ───────────────
   if (error) return <div className="lcard" style={{ padding: 20, color: "var(--red)" }}>⚠ Failed to load reports: {error}</div>;
-  if (!reports) return <div className="lcard" style={{ padding: 20, color: "var(--dim)" }}>Loading weekly reports…</div>;
+  if (!reports) return <div className="lcard" style={{ padding: 20, color: "var(--dim)" }}>Loading device reports…</div>;
+
+  const monthlyRows = buildMonthlyRows(reports);
 
   return (
-    <div className="lcard">
-      <div className="lhdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Weekly Reports</span>
-        <button className="capture-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate now (test)"}</button>
+    <>
+      <div className="dr-tabs">
+        <button className={`dr-tab ${range === "weekly" ? "active" : ""}`} onClick={() => setRange("weekly")}>Weekly</button>
+        <button className={`dr-tab ${range === "monthly" ? "active" : ""}`} onClick={() => setRange("monthly")}>Monthly</button>
       </div>
-      <table className="ltable">
-        <thead><tr><th>Account</th><th>Device</th><th>Period</th><th>Generated</th><th /></tr></thead>
-        <tbody>
-          {reports.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO REPORTS YET — FIRST ONE GENERATES SUNDAY AT MIDNIGHT</td></tr>}
-          {reports.map((r) => (
-            <tr key={r.id}>
-              <td>{r.device_owner || "—"}</td>
-              <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
-              <td style={{ fontSize: "11px", color: "var(--dim)" }}>{new Date(r.period_since).toLocaleDateString()} – {new Date(r.period_until).toLocaleDateString()}</td>
-              <td><span className="ts">{new Date(r.generated_at).toLocaleString()}</span></td>
-              <td><button className="capture-btn" onClick={() => openDetail(r.id)}>View Details →</button></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+
+      {range === "weekly" ? (
+        <div className="lcard">
+          <div className="lhdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Weekly Device Reports</span>
+            <button className="capture-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate now (test)"}</button>
+          </div>
+          <table className="ltable">
+            <thead><tr><th>Account</th><th>Device</th><th>Period</th><th>Generated</th><th /></tr></thead>
+            <tbody>
+              {reports.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO REPORTS YET — FIRST ONE GENERATES SUNDAY AT MIDNIGHT</td></tr>}
+              {reports.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.device_owner || "—"}</td>
+                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
+                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{new Date(r.period_since).toLocaleDateString()} – {new Date(r.period_until).toLocaleDateString()}</td>
+                  <td><span className="ts">{new Date(r.generated_at).toLocaleString()}</span></td>
+                  <td><button className="capture-btn" onClick={() => openDetail(r.id)}>View Details →</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="lcard">
+          <div className="lhdr">
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Monthly Device Reports <span style={{ color: "var(--accent)", marginLeft: 6 }}>for maintenance</span></span>
+          </div>
+          <table className="ltable">
+            <thead><tr><th>Account</th><th>Device</th><th>Month</th><th>Detections</th><th>Escalated</th><th>Last Seen</th></tr></thead>
+            <tbody>
+              {monthlyRows.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO MONTHLY DATA YET — ACCUMULATES FROM WEEKLY REPORTS</td></tr>}
+              {monthlyRows.map((r) => (
+                <tr key={r.key}>
+                  <td>{r.device_owner || "—"}</td>
+                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
+                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.monthLabel}</td>
+                  <td style={{ color: "var(--red)", fontWeight: 700 }}>{r.detections_total}</td>
+                  <td style={{ color: "var(--orange)" }}>{r.detections_escalated}</td>
+                  <td><span className="ts">{new Date(r.lastSeen).toLocaleString()}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -972,10 +1081,10 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
     <>
       <div className="status-bar">
         {[
-          { label: "Detection",     val: detecting ? "🔴 SCANNING" : "⚪ STANDBY",   color: detecting ? "var(--red)" : "var(--dim)",     sub: detecting ? "Sensors active" : "Paused" },
+          { label: "Detection",     val: detecting ? "SCANNING" : "STANDBY",   color: detecting ? "var(--red)" : "var(--dim)",     sub: detecting ? "Sensors active" : "Paused" },
           { label: "Rats Detected", val: ratCount,                                    color: "var(--red)",                                 sub: "total events" },
           { label: "Photos Saved",  val: photoCount,                                  color: "var(--teal)",                                sub: "see Activity" },
-          { label: "Raspberry Pi",  val: rpiConnected ? "🟢 ONLINE" : "🔴 OFFLINE",   color: rpiConnected ? "var(--accent)" : "var(--red)",sub: rpiConnected ? "Reporting in" : "Not connected" },
+          { label: "Raspberry Pi",  val: rpiConnected ? "ONLINE" : "OFFLINE",   color: rpiConnected ? "var(--accent)" : "var(--red)",sub: rpiConnected ? "Reporting in" : "Not connected" },
           { label: "Last Update",   val: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }), color: "var(--accent)", sub: "real-time" },
         ].map((s, i) => (
           <div key={i}><div className="si-label">{s.label}</div>
@@ -987,8 +1096,8 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
         {[
           { cls: "mc1", label: "Triggers Today", val: today, sub: <span className="badge bg">all sources</span> },
           { cls: "mc2", label: "Armed Devices",  val: Object.values(enabled).filter(Boolean).length, sub: <span style={{ color: "var(--teal)" }}>of 4</span> },
-          { cls: "mc3", label: "Last Trigger",   val: lastTs ? lastTs.tsStr : "--:--", sm: true, sub: lastTs ? (lastTs.isRat ? "🐀 Rat detected" : `${TYPE_META[lastTs.type]?.icon || ""} ${TYPE_META[lastTs.type]?.label || ""}`) : "—" },
-          { cls: "mc4", label: "Rats Detected",  val: ratCount, sub: <span className="badge br">🐀 confirmed</span> },
+          { cls: "mc3", label: "Last Trigger",   val: lastTs ? lastTs.tsStr : "--:--", sm: true, sub: lastTs ? (lastTs.isRat ? "Rat detected" : `${TYPE_META[lastTs.type]?.label || ""}`) : "—" },
+          { cls: "mc4", label: "Rats Detected",  val: ratCount, sub: <span className="badge br">confirmed</span> },
         ].map((m, i) => (
           <div key={i} className={`mc ${m.cls}`}>
             <div className="mc-lbl">{m.label}</div>
@@ -1022,7 +1131,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
             {logs.slice(0, 8).map((l, i) => (
               <tr key={l.id} className={`${i === 0 ? "new-r" : ""} ${l.isRat ? "rat-r" : ""} ${l.isLast ? "lst-r" : ""}`}>
                 <td><span className="ts">{l.dateStr} {l.tsStr}</span></td>
-                <td>{l.isRat ? <span className="tbadge tbd">🐀 RAT</span> : l.isLast ? <span className="tbadge tblr">🚨 LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.icon} {TYPE_META[l.type]?.label}</span>}</td>
+                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.user}</td>
                 <td>{statusBadge(l.status)}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
@@ -1035,77 +1144,23 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
   );
 }
 
-// ── Real Pi camera test — asks the Raspberry Pi itself to grab a frame and
-// upload it, using the same capture_photo_path()/upload_photo() functions the
-// Gives a real end-to-end test of the photo pipeline using the Pi's own camera.
-function PiCameraTest({ rpiConnected, piCamResult, onPiCamResult }) {
-  const [pending, setPending] = useState(null); // command id we're waiting on
-  const [status, setStatus] = useState(null);   // {ok:boolean, msg:string}
-  const [photoUrl, setPhotoUrl] = useState(null);
-
-  useEffect(() => {
-    if (!piCamResult || !pending || piCamResult.command_id !== pending) return;
-    if (piCamResult.status === "ok" && piCamResult.photo_url) {
-      setPhotoUrl(api.photoUrl(piCamResult.photo_url));
-      setStatus({ ok: true, msg: "✅ Got a frame from the Pi" });
-    } else {
-      setStatus({ ok: false, msg: "⚠ Pi reported the capture failed — check its camera connection" });
-    }
-    setPending(null);
-    onPiCamResult && onPiCamResult(null);
-  }, [piCamResult, pending]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function testCamera() {
-    setStatus(null);
-    setPhotoUrl(null);
-    try {
-      const res = await api.testPiCamera();
-      setPending(res.id);
-      setStatus({ ok: true, msg: "Waiting for the Pi to respond…" });
-    } catch (e) {
-      setStatus({ ok: false, msg: e.message || "Could not reach the backend" });
-    }
-  }
-
-  return (
-    <div className="capture-card">
-      <div className="capture-hdr">
-        <span className="capture-title">🍓 Pi Camera Test</span>
-        <span style={{ fontSize: 11, color: "var(--dim)" }}>Asks the Raspberry Pi itself to capture a frame — a real test of its camera, not this device's</span>
-      </div>
-      <div className="capture-body">
-        <div className="capture-video-wrap">
-          {photoUrl ? <img src={photoUrl} alt="Frame from the Pi" /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--dim)", fontSize: 24 }}>🍓</div>}
-        </div>
-        <div className="capture-actions">
-          <button className="capture-btn" onClick={testCamera} disabled={!rpiConnected || !!pending}>
-            {pending ? "Waiting…" : "🍓 Test Pi Camera"}
-          </button>
-          {!rpiConnected && <div className="capture-status err">Pi is offline — connect it first</div>}
-          {status && <div className={`capture-status ${status.ok ? "ok" : "err"}`}>{status.msg}</div>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, notice, piCamResult, onPiCamResult }) {
+function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, notice }) {
   const types = [
-    { key: "lights", icon: "💡", name: "Lights",      desc: "Strobe / illuminate", danger: false },
-    { key: "audio",  icon: "🔊", name: "Audio Alert", desc: "Broadcast alarm",     danger: false },
-    { key: "pepper", icon: "🌿", name: "Peppermint",  desc: "Trigger spray",       danger: false },
-    { key: "last",   icon: "🚨", name: "Last Resort", desc: "Auto if rat stays",   danger: true },
+    { key: "lights", name: "Lights",      desc: "Strobe / illuminate", danger: false },
+    { key: "audio",  name: "Audio Alert", desc: "Broadcast alarm",     danger: false },
+    { key: "pepper", name: "Peppermint",  desc: "Trigger spray",       danger: false },
+    { key: "last",   name: "Last Resort", desc: "Auto if rat stays",   danger: true },
   ];
   const lastFor = (k) => logs.find((l) => l.type === k && !l.isRat);
   return (
     <>
       <div style={{ marginBottom: "16px", padding: "12px 16px", background: "rgba(16,185,129,.06)", border: "1px solid rgba(16,185,129,.18)", borderRadius: "8px" }}>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--accent)", marginBottom: "3px", letterSpacing: "1px" }}>🐀 AUTO-RESPONSE SEQUENCE</div>
-        <div style={{ fontSize: "12px", color: "var(--dim)" }}>Triggers fire automatically when the Pi confirms a rat: 💡→🔊→🌿→🚨. You can also arm/disarm and test-fire manually — the Pi is the one that actually performs the action and acknowledges it back here.</div>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--accent)", marginBottom: "3px", letterSpacing: "1px" }}>AUTO-RESPONSE SEQUENCE</div>
+        <div style={{ fontSize: "12px", color: "var(--dim)" }}>Triggers fire automatically when the Pi confirms a rat: Lights → Audio → Peppermint → Last Resort. You can also arm/disarm and test-fire manually — the Pi is the one that actually performs the action and acknowledges it back here.</div>
       </div>
       {!rpiConnected && (
         <div style={{ marginBottom: 16, padding: "10px 16px", background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.2)", borderRadius: 8, color: "var(--red)", fontSize: 12, fontFamily: "var(--font-mono)" }}>
-          🔴 Pi is offline — test-fires will be queued but won't run until it reconnects.
+          Pi is offline — test-fires will be queued but won't run until it reconnects.
         </div>
       )}
       {notice && (
@@ -1113,19 +1168,17 @@ function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, 
           {notice}
         </div>
       )}
-      <PiCameraTest rpiConnected={rpiConnected} piCamResult={piCamResult} onPiCamResult={onPiCamResult} />
 
       <div className="tgrid">
         {types.map((t) => {
           const on = enabled[t.key], firing = firingKey === t.key, last = lastFor(t.key);
           return (
             <div key={t.key} className={`tcard ${on && !t.danger ? "armed" : ""} ${firing && !t.danger ? "firing" : ""} ${on && t.danger ? "d-armed" : ""} ${firing && t.danger ? "d-fire" : ""}`}>
-              <span className="t-icon">{t.icon}</span>
               <div className="t-name">{t.name}</div>
               <div className="t-desc">{t.desc}</div>
               <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginBottom: "10px" }}>
-                <span className="chip chip-auto">🚨 AUTO</span>
-                {rpiConnected && <span className="chip chip-rpi">🍓 GPIO</span>}
+                <span className="chip chip-auto">AUTO</span>
+                {rpiConnected && <span className="chip chip-rpi">GPIO</span>}
               </div>
               <div className="trow">
                 <span className="tlbl">Armed</span>
@@ -1136,7 +1189,7 @@ function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, 
               <button className={`tbtn ${on ? (t.danger ? "rd" : "ac") : ""} ${firing ? "now" : ""}`}
                 onClick={() => on && onFire(t.key)}
                 style={{ cursor: on ? "pointer" : "not-allowed", opacity: on ? 1 : 0.4 }}>
-                {firing ? "⚡ FIRING..." : t.danger ? "⚠ TEST" : "▶ TEST FIRE"}
+                {firing ? "FIRING..." : t.danger ? "TEST" : "TEST FIRE"}
               </button>
               {last && <div className="tlast">Last: {last.dateStr} {last.tsStr} · {last.status === "ok" ? "confirmed" : "failed"}</div>}
             </div>
@@ -1168,7 +1221,7 @@ function ActivityLogTable({ logs, onViewPhoto }) {
           <div className="lfilters">
             {["all", "rat", "lights", "audio", "pepper", "last"].map((f) => (
               <button key={f} className={`fb ${filter === f ? "on" : ""}`} onClick={() => { setFilter(f); setPg(0); }}>
-                {f === "all" ? "ALL" : f === "rat" ? "🐀 RAT" : TYPE_META[f]?.icon + " " + TYPE_META[f]?.label.toUpperCase()}
+                {f === "all" ? "ALL" : f === "rat" ? "RAT" : TYPE_META[f]?.label.toUpperCase()}
               </button>
             ))}
           </div>
@@ -1182,11 +1235,11 @@ function ActivityLogTable({ logs, onViewPhoto }) {
               <tr key={l.id} className={`${i === 0 && pg === 0 ? "new-r" : ""} ${l.isRat ? "rat-r" : ""} ${l.isLast ? "lst-r" : ""}`}>
                 <td><span className="ts">{l.dateStr}</span></td>
                 <td><span className="ts">{l.tsStr}</span></td>
-                <td>{l.isRat ? <span className="tbadge tbd">🐀 RAT</span> : l.isLast ? <span className="tbadge tblr">🚨 LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.icon} {TYPE_META[l.type]?.label}</span>}</td>
+                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.user}</td>
                 <td>{statusBadge(l.status)}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
-                <td>{l.photoId ? <button className="photo-link-btn" onClick={() => onViewPhoto && onViewPhoto(l.photoId)}>📷 View</button> : <span style={{ color: "var(--muted)", fontSize: "10px" }}>—</span>}</td>
+                <td>{l.photoId ? <button className="photo-link-btn" onClick={() => onViewPhoto && onViewPhoto(l.photoId)}>View</button> : <span style={{ color: "var(--muted)", fontSize: "10px" }}>—</span>}</td>
               </tr>
             ))}
             {visible.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO RESULTS FOUND</td></tr>}
@@ -1212,8 +1265,8 @@ function PhotoGallery({ photos }) {
           {photos.map((p) => {
             const m = TYPE_META[p.type] || TYPE_META[p.escalated ? "last" : "pepper"];
             const label = p.isRat
-              ? `🐀 Rat Detected${p.confidence != null ? ` · ${Math.round(p.confidence * 100)}%` : ""}`
-              : `📸 Test Capture${p.capturedBy ? ` · ${p.capturedBy}` : ""}`;
+              ? `Rat Detected${p.confidence != null ? ` · ${Math.round(p.confidence * 100)}%` : ""}`
+              : `Test Capture${p.capturedBy ? ` · ${p.capturedBy}` : ""}`;
             return (
               <div className="gallery-card" key={p.id} id={`photo-${p.id}`}>
                 {p.url ? <img className="gallery-thumb" src={api.photoUrl(p.url)} alt="Captured detection" /> : <div className="gallery-thumb" />}
@@ -1236,8 +1289,8 @@ function ActivityPage({ logs, photos }) {
   return (
     <>
       <div className="tabbar">
-        <button className={`tabbtn ${tab === "log" ? "active" : ""}`} onClick={() => setTab("log")}>☰ Log</button>
-        <button className={`tabbtn ${tab === "photos" ? "active" : ""}`} onClick={() => setTab("photos")}>📷 Photos ({photos.length})</button>
+        <button className={`tabbtn ${tab === "log" ? "active" : ""}`} onClick={() => setTab("log")}>Log</button>
+        <button className={`tabbtn ${tab === "photos" ? "active" : ""}`} onClick={() => setTab("photos")}>Photos ({photos.length})</button>
       </div>
       {tab === "log"
         ? <ActivityLogTable logs={logs} onViewPhoto={() => setTab("photos")} />
@@ -1276,7 +1329,9 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
 
       <div className="acct-add-form">
         <div className="af-field"><span className="af-lbl">USERNAME</span><input className="af-in" value={newUser} onChange={(e) => { setNewUser(e.target.value); setErr(""); }} placeholder="new username" /></div>
-        <div className="af-field"><span className="af-lbl">PASSWORD</span><input className="af-in" type="text" value={newPass} onChange={(e) => { setNewPass(e.target.value); setErr(""); }} placeholder="temporary password" /></div>
+        <div className="af-field"><span className="af-lbl">PASSWORD</span>
+          <PasswordField className="af-in" value={newPass} placeholder="temporary password" onChange={(e) => { setNewPass(e.target.value); setErr(""); }} />
+        </div>
         <div className="af-field"><span className="af-lbl">ROLE</span>
           <select className="af-sel" value={newRole} onChange={(e) => setNewRole(e.target.value)}>
             <option value="user">User (view only)</option>
@@ -1309,8 +1364,8 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
                 <option value="admin">Admin</option>
               </select>
               {acc.active
-                ? <button className="deact-btn" onClick={() => onToggleActive(acc.username, false)} disabled={acc.username === currentUser}>⛔ Deactivate</button>
-                : <button className="react-btn" onClick={() => onToggleActive(acc.username, true)}>✓ Reactivate</button>}
+                ? <button className="deact-btn" onClick={() => onToggleActive(acc.username, false)} disabled={acc.username === currentUser}>Deactivate</button>
+                : <button className="react-btn" onClick={() => onToggleActive(acc.username, true)}>Reactivate</button>}
             </div>
           </div>
         ))}
@@ -1414,7 +1469,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
     <>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Detection Reports & Analytics</span>
-        <button className="export-btn" onClick={exportReport}>⬇ Export Report (CSV)</button>
+        <button className="export-btn" onClick={exportReport}>Export Report (CSV)</button>
       </div>
 
       <div className="an-grid">
@@ -1463,7 +1518,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
 
       <div className="lhdr" style={{ marginBottom: 14 }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Daily Report <span style={{ color: "var(--accent)", marginLeft: 6 }}>This Week (Mon–Sun)</span></span>
-        <button className="export-btn" onClick={exportDailyReport}>⬇ Export Daily Report (CSV)</button>
+        <button className="export-btn" onClick={exportDailyReport}>Export Daily Report (CSV)</button>
       </div>
 
       <div className="ds-cards">
@@ -1515,13 +1570,13 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
           <div className="cc-hdr"><span className="cc-title">Trigger Usage Distribution</span></div>
           <div className="hbar-list">
             {[
-              { icon: "💡", label: "Lights", val: wk.lights, color: TYPE_META.lights.color },
-              { icon: "🔊", label: "Audio",  val: wk.audio,  color: TYPE_META.audio.color },
-              { icon: "🌿", label: "Pepper", val: wk.pepper, color: TYPE_META.pepper.color },
-              { icon: "🚨", label: "Last",   val: wk.last,   color: TYPE_META.last.color },
+              { label: "Lights", val: wk.lights, color: TYPE_META.lights.color },
+              { label: "Audio",  val: wk.audio,  color: TYPE_META.audio.color },
+              { label: "Pepper", val: wk.pepper, color: TYPE_META.pepper.color },
+              { label: "Last",   val: wk.last,   color: TYPE_META.last.color },
             ].map((row) => (
               <div className="hbar-row" key={row.label}>
-                <span className="hbar-icon-lbl">{row.icon} {row.label}</span>
+                <span className="hbar-icon-lbl">{row.label}</span>
                 <div className="hbar-track"><div className="hbar-fill" style={{ width: `${Math.round((row.val / triggerMax) * 100)}%`, background: row.color }} /></div>
                 <span className="hbar-val">{row.val}</span>
               </div>
@@ -1566,10 +1621,10 @@ function ChangePasswordForm() {
     setBusy(true);
     try {
       await api.changePassword(current, next);
-      setMsg({ ok: true, text: "✅ Password updated." });
+      setMsg({ ok: true, text: "Password updated." });
       setCurrent(""); setNext(""); setConfirm("");
     } catch (e) {
-      setMsg({ ok: false, text: "⚠ " + (e.message || "Could not update password.") });
+      setMsg({ ok: false, text: e.message || "Could not update password." });
     } finally {
       setBusy(false);
     }
@@ -1577,18 +1632,18 @@ function ChangePasswordForm() {
 
   return (
     <div className="scard">
-      <div className="sc-title">🔑 Change Password</div>
+      <div className="sc-title">Change Password</div>
       <div className="login-field">
         <label className="login-lbl">Current Password</label>
-        <input className="login-in" type="password" value={current} onChange={(e) => setCurrent(e.target.value)} placeholder="Current password" />
+        <PasswordField value={current} placeholder="Current password" onChange={(e) => setCurrent(e.target.value)} />
       </div>
       <div className="login-field">
         <label className="login-lbl">New Password</label>
-        <input className="login-in" type="password" value={next} onChange={(e) => setNext(e.target.value)} placeholder="At least 6 characters" />
+        <PasswordField value={next} placeholder="At least 6 characters" onChange={(e) => setNext(e.target.value)} />
       </div>
       <div className="login-field">
         <label className="login-lbl">Confirm New Password</label>
-        <input className="login-in" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="Repeat new password" />
+        <PasswordField value={confirm} placeholder="Repeat new password" onChange={(e) => setConfirm(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
       </div>
       <button className="login-btn" onClick={submit} disabled={busy} style={{ marginTop: 4 }}>{busy ? "Updating…" : "Update Password"}</button>
       {msg && <div style={{ marginTop: 10, fontFamily: "var(--font-mono)", fontSize: 12, color: msg.ok ? "var(--accent)" : "var(--red)" }}>{msg.text}</div>}
@@ -1613,15 +1668,15 @@ function Settings({ enabled, setEnabled, detecting, setDetecting, detInt, setDet
   async function connect() {
     if (lockedByOther || !ip || busy) return;
     setBusy(true);
-    try { await onConnect(ip); flash("✅ Linked — waiting for the Pi's first heartbeat"); }
-    catch (e) { flash("⚠ " + (e.message || "Could not connect")); }
+    try { await onConnect(ip); flash("Linked — waiting for the Pi's first heartbeat"); }
+    catch (e) { flash(e.message || "Could not connect"); }
     finally { setBusy(false); }
   }
   async function disconnect() {
     if (!isOwner || busy) return;
     setBusy(true);
-    try { await onDisconnect(); setIp(""); flash("🔴 Disconnected and unlinked"); }
-    catch (e) { flash("⚠ " + (e.message || "Could not disconnect")); }
+    try { await onDisconnect(); setIp(""); flash("Disconnected and unlinked"); }
+    catch (e) { flash(e.message || "Could not disconnect"); }
     finally { setBusy(false); }
   }
   async function loadInstallCommand() {
@@ -1631,30 +1686,31 @@ function Settings({ enabled, setEnabled, detecting, setDetecting, detInt, setDet
   function copyCommand() {
     if (!installCmd) return;
     navigator.clipboard?.writeText(installCmd);
-    flash("📋 Command copied");
+    flash("Command copied");
   }
 
   return (
     <>
       <div className="tabbar">
-        <button className={`tabbtn ${tab === "system" ? "active" : ""}`} onClick={() => setTab("system")}>⚙ System</button>
-        <button className={`tabbtn ${tab === "account" ? "active" : ""}`} onClick={() => setTab("account")}>🔑 Account</button>
-        <button className={`tabbtn ${tab === "device" ? "active" : ""}`} onClick={() => { setTab("device"); if (isAdmin && !installCmd) loadInstallCommand(); }}>🍓 Device</button>
+        <button className={`tabbtn ${tab === "system" ? "active" : ""}`} onClick={() => setTab("system")}>System</button>
+        <button className={`tabbtn ${tab === "account" ? "active" : ""}`} onClick={() => setTab("account")}>Account</button>
+        <button className={`tabbtn ${tab === "device" ? "active" : ""}`} onClick={() => { setTab("device"); if (isAdmin && !installCmd) loadInstallCommand(); }}>Device</button>
       </div>
 
       {tab === "system" && (
         <div className="sg">
           <div className="scard">
-            <div className="sc-title">🐀 Detection Settings</div>
+            <div className="sc-title">Detection Settings</div>
             <div className="srow"><div><div className="sn">Auto-Detection</div><div className="sd">Pi scans and responds automatically</div></div><div className={`tog ${detecting ? "on" : ""} red`} onClick={() => setDetecting(!detecting)} style={{ cursor: "pointer" }} /></div>
             <div className="srow"><div><div className="sn">Detection Interval</div><div className="sd">How often the Pi checks (seconds)</div></div><input className="sin" type="number" value={detInt} min={5} max={120} onChange={(e) => setDetInt(Number(e.target.value))} /></div>
-            <div className="srow"><div><div className="sn">Sequence</div><div className="sd">💡→🔊→🌿→🚨 (Pi-controlled timing)</div></div><span style={{ fontSize: "14px" }}>💡🔊🌿🚨</span></div>
+            <div className="srow"><div><div className="sn">Sequence</div><div className="sd">Lights → Audio → Peppermint → Last Resort (Pi-controlled timing)</div></div></div>
           </div>
           <div className="scard">
             <div className="sc-title">Trigger Config</div>
             {Object.entries(TYPE_META).map(([k, m]) => (
+              k === "capture" ? null :
               <div key={k} className="srow">
-                <div><div className="sn">{m.icon} {m.label}</div><div className="sd">{enabled[k] ? "Armed" : "Disabled"}</div></div>
+                <div><div className="sn">{m.label}</div><div className="sd">{enabled[k] ? "Armed" : "Disabled"}</div></div>
                 <div className={`tog ${enabled[k] ? "on" : ""} ${k === "last" ? "red" : ""}`} onClick={() => setEnabled(k, !enabled[k])} style={{ cursor: "pointer" }} />
               </div>
             ))}
@@ -1697,11 +1753,11 @@ function Settings({ enabled, setEnabled, detecting, setDetecting, detInt, setDet
               </div>
             </div>
           ) : (
-            <div className="locked-banner">🔒 Only admins can view the install command and pair the device.</div>
+            <div className="locked-banner">Only admins can view the install command and pair the device.</div>
           )}
 
           {lockedByOther && (
-            <div className="locked-banner">🔒 This device is linked to account <b style={{ color: "var(--text)" }}>"{rpiOwner}"</b>. Ask them to disconnect it before connecting here.</div>
+            <div className="locked-banner">This device is linked to account <b style={{ color: "var(--text)" }}>"{rpiOwner}"</b>. Ask them to disconnect it before connecting here.</div>
           )}
 
           {isAdmin && (
@@ -1709,7 +1765,7 @@ function Settings({ enabled, setEnabled, detecting, setDetecting, detInt, setDet
               <div className="iot-title">Connect Your Pi</div>
               {rpiIp && isOwner ? (
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <span className="owner-pill">🔗 Linked to {rpiOwner} · {rpiIp} · {rpiConnected ? "online" : "waiting for heartbeat"}</span>
+                  <span className="owner-pill">Linked to {rpiOwner} · {rpiIp} · {rpiConnected ? "online" : "waiting for heartbeat"}</span>
                   <button className="iot-btn ghost" onClick={disconnect} disabled={busy}>Disconnect & Unlink</button>
                 </div>
               ) : (
@@ -1717,7 +1773,7 @@ function Settings({ enabled, setEnabled, detecting, setDetecting, detInt, setDet
                   <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                     <input className="input-iot" placeholder="Pi IP address, e.g. 192.168.1.42" value={ip}
                       onChange={(e) => setIp(e.target.value)} disabled={lockedByOther} />
-                    <button className="iot-btn prim" onClick={connect} disabled={lockedByOther || !ip || busy}>⚡ Connect</button>
+                    <button className="iot-btn prim" onClick={connect} disabled={lockedByOther || !ip || busy}>Connect</button>
                   </div>
                   <div style={{ fontSize: "11px", color: "var(--dim)", marginTop: "10px" }}>Find the IP by running <b style={{ color: "var(--text)" }}>hostname -I</b> on the Pi after setup finishes.</div>
                 </>
@@ -1727,7 +1783,7 @@ function Settings({ enabled, setEnabled, detecting, setDetecting, detInt, setDet
           )}
 
           <div className="iot-card">
-            <div className="iot-title">📍 Wiring Reference (optional)</div>
+            <div className="iot-title">Wiring Reference (optional)</div>
             <div className="pin-grid">
               {[{ num: 17, name: "Lights", color: "#10B981" }, { num: 27, name: "Audio", color: "#FCD34D" },
                 { num: 22, name: "Pepper", color: "#6EE7B7" }, { num: 18, name: "L.Resort", color: "#F87171" },
@@ -1787,7 +1843,6 @@ export default function App() {
   const [accounts, setAccounts] = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [toast, setToast] = useState(null);
-  const [piCamResult, setPiCamResult] = useState(null);
   const ratAlertTimer = useRef(null);
 
   const isAdmin = role === "admin";
@@ -1853,8 +1908,6 @@ export default function App() {
         setDetectingState(evt.payload.detecting); setDetIntState(evt.payload.detectionInterval);
       } else if (evt.type === "accounts_changed" && page === "admin") {
         loadAccounts();
-      } else if (evt.type === "pi_camera_test_result") {
-        setPiCamResult(evt.payload);
       }
     });
 
@@ -1935,11 +1988,11 @@ export default function App() {
   }
 
   const MAIN_NAV = [
-    { key: "dashboard", icon: "◈", label: "Dashboard" },
-    { key: "triggers",  icon: "⚡", label: "Triggers" },
-    { key: "activity",  icon: isAdmin ? "📄" : "☰", label: isAdmin ? "Weekly Report" : "Activity" },
-    { key: "analytics", icon: "📊", label: "Analytics" },
-    { key: "settings",  icon: "⚙", label: "Settings" },
+    { key: "dashboard", label: "Dashboard" },
+    { key: "triggers",  label: "Triggers" },
+    { key: "activity",  label: isAdmin ? "Device Reports" : "Activity" },
+    { key: "analytics", label: "Analytics" },
+    { key: "settings",  label: "Settings" },
   ];
 
   // ── Screen router ─────────────────────────────────────────────────────
@@ -1960,11 +2013,11 @@ export default function App() {
         <div className="nav-right" style={{ marginLeft: "auto" }}>
           <button className="theme-toggle" onClick={toggleTheme}>{theme === "dark" ? "☀ Light" : "☾ Dark"}</button>
           <span className="nav-time">{fmtT(clock)}</span>
-          {ratCount > 0 && <span className="nb nb-rat">🐀 {ratCount}</span>}
-          {!isAdmin && <span className={`nb ${rpiConnected ? "nb-rpi" : "nb-off"}`}>{rpiConnected ? "🍓 Online" : "🍓 Offline"}</span>}
-          {!isAdmin && <span className="nb nb-live">● LIVE</span>}
-          <span className={`nb ${isAdmin ? "nb-admin" : "nb-user"}`}>{isAdmin ? "🛡 Admin" : "👤 User"}</span>
-          <div className="nav-user">👤 {currentUser}</div>
+          {ratCount > 0 && <span className="nb nb-rat">{ratCount}</span>}
+          {!isAdmin && <span className={`nb ${rpiConnected ? "nb-rpi" : "nb-off"}`}>{rpiConnected ? "Pi Online" : "Pi Offline"}</span>}
+          {!isAdmin && <span className="nb nb-live">LIVE</span>}
+          <span className={`nb ${isAdmin ? "nb-admin" : "nb-user"}`}>{isAdmin ? "Admin" : "User"}</span>
+          <div className="nav-user">{currentUser}</div>
           <button className="nav-out" onClick={signOut}>Sign Out</button>
         </div>
       </nav>
@@ -1975,16 +2028,16 @@ export default function App() {
             <div className="sb-label">Navigation</div>
             {MAIN_NAV.map((n) => (
               <div key={n.key} className={`sb-item ${page === n.key ? "active" : ""}`} onClick={() => setPage(n.key)}>
-                <span className="sb-icon">{n.icon}</span>{n.label}
+                {n.label}
               </div>
             ))}
           </div>
 
           {isAdmin && (
             <div className="admin-zone">
-              <div className="sb-label admin-lbl">🛡 Admin</div>
+              <div className="sb-label admin-lbl">Admin</div>
               <div className={`sb-item ${page === "admin" ? "active" : ""}`} onClick={() => setPage("admin")}>
-                <span className="sb-icon">🛡</span>Admin Panel
+                Admin Panel
               </div>
             </div>
           )}
@@ -1994,7 +2047,7 @@ export default function App() {
           {!isAdmin && (
             <>
               <div className={`rpi-panel ${rpiConnected ? "" : "offline"}`}>
-                <div className="rpi-lbl">🍓 RASPBERRY PI</div>
+                <div className="rpi-lbl">RASPBERRY PI</div>
                 <div className="rpi-stat" style={{ color: rpiConnected ? "var(--accent)" : "var(--red)" }}>
                   <span className="pdot" style={{ background: rpiConnected ? "var(--accent)" : "var(--red)" }} />
                   {rpiConnected ? "ONLINE" : "OFFLINE"}
@@ -2008,7 +2061,7 @@ export default function App() {
                   <span className="pdot" style={{ background: detecting ? "var(--red)" : "var(--muted)" }} />
                   {detecting ? "ACTIVE" : "PAUSED"}
                 </div>
-                <div className="det-cnt">🐀 {ratCount} detected</div>
+                <div className="det-cnt">{ratCount} detected</div>
               </div>
             </>
           )}
@@ -2025,8 +2078,8 @@ export default function App() {
             {page === "dashboard" && (isAdmin
               ? <AdminDashboardCards accountCount={accounts.length} activeCount={accounts.filter((a) => a.active).length} onNavigate={setPage} />
               : <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />)}
-            {page === "triggers" && <Triggers logs={logs} enabled={enabled} setEnabled={setEnabledOne} onFire={onFire} firingKey={firingKey} rpiConnected={rpiConnected} notice={triggerNotice} piCamResult={piCamResult} onPiCamResult={setPiCamResult} />}
-            {page === "activity" && (isAdmin ? <WeeklyReportPage /> : <ActivityPage logs={logs} photos={photos} />)}
+            {page === "triggers" && <Triggers logs={logs} enabled={enabled} setEnabled={setEnabledOne} onFire={onFire} firingKey={firingKey} rpiConnected={rpiConnected} notice={triggerNotice} />}
+            {page === "activity" && (isAdmin ? <DeviceReportsPage /> : <ActivityPage logs={logs} photos={photos} />)}
             {page === "analytics" && <AnalyticsPage logs={logs} chartData={chart} counts={counts} ratCount={ratCount} />}
             {page === "settings" && (
               <Settings
@@ -2045,7 +2098,7 @@ export default function App() {
           </div>
         </div>
       </div>
-      {toast && <div className="toast">⚠ {toast}</div>}
+      {toast && <div className="toast">{toast}</div>}
     </div>
   );
 }
