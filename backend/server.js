@@ -173,6 +173,73 @@ function triggerToLogEntry(t) {
   };
 }
 
+// Builds and stores one point-in-time weekly snapshot into the weekly_reports
+// table, covering the 7 days up to "now". This is what backs the admin's
+// Device Reports (Weekly tab) — a frozen record, not a live query, so past
+// weeks stay stable even as new detections/triggers keep coming in.
+function generateWeeklyReport() {
+  const now = new Date();
+  const since = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+  const sinceIso = since.toISOString();
+  const nowIso = now.toISOString();
+
+  const device = db.prepare("SELECT * FROM device WHERE id = 1").get() || {};
+
+  const detRows = db
+    .prepare("SELECT * FROM detections WHERE timestamp >= ? AND source != 'manual' ORDER BY timestamp DESC")
+    .all(sinceIso);
+  const trgRows = db
+    .prepare("SELECT * FROM trigger_events WHERE created_at >= ? ORDER BY created_at DESC")
+    .all(sinceIso);
+
+  const entries = [...detRows.map(detectionToLogEntry), ...trgRows.map(triggerToLogEntry)].sort(
+    (a, b) => new Date(b.ts) - new Date(a.ts)
+  );
+
+  const detections_total = detRows.length;
+  const detections_escalated = detRows.filter((d) => d.escalated).length;
+
+  const deterrence = {};
+  trgRows.forEach((t) => {
+    if (!deterrence[t.type]) deterrence[t.type] = { ok: 0, fail: 0 };
+    if (t.status === "ok") deterrence[t.type].ok += 1;
+    else if (t.status === "fail") deterrence[t.type].fail += 1;
+  });
+
+  const id = uuid();
+  db.prepare(
+    `INSERT INTO weekly_reports
+       (id, device_owner, device_ip, period_since, period_until, generated_at, detections_total, detections_escalated, deterrence_json, entries_json)
+     VALUES (?,?,?,?,?,?,?,?,?,?)`
+  ).run(
+    id,
+    device.owner || null,
+    device.ip || null,
+    sinceIso,
+    nowIso,
+    nowIso,
+    detections_total,
+    detections_escalated,
+    JSON.stringify(deterrence),
+    JSON.stringify(entries)
+  );
+
+  return id;
+}
+
+// Auto-generate a snapshot every Sunday at 00:00, once per day at most.
+let lastAutoGenDate = null;
+setInterval(() => {
+  const now = new Date();
+  if (now.getDay() === 0 && now.getHours() === 0) {
+    const today = now.toDateString();
+    if (lastAutoGenDate !== today) {
+      generateWeeklyReport();
+      lastAutoGenDate = today;
+    }
+  }
+}, 60000);
+
 // ══════════════════════════════════════ AUTH ══════════════════════════════════
 app.post("/api/auth/login", (req, res) => {
   const { username, password } = req.body || {};
@@ -340,20 +407,6 @@ app.post("/api/trigger", requireUser, (req, res) => {
   res.status(202).json({ id: eventId, status: "pending" });
 });
 
-// ══════════════════════════════════════ PI CAMERA TEST (dashboard → Pi) ═════
-// Separate from /api/trigger on purpose: this doesn't actuate any hardware,
-// isn't subject to the deterrence cooldown, and doesn't create a trigger_event
-// row (there's nothing to arm/disarm or log as a deterrence action). It reuses
-// the same commands/ack polling plumbing the Pi already has for triggers.
-app.post("/api/pi-camera/test", requireUser, (req, res) => {
-  const cmdId = uuid();
-  const now = new Date().toISOString();
-  db.prepare(
-    `INSERT INTO commands (id, type, duration, status, trigger_event_id, created_at) VALUES (?,?,?,?,?,?)`
-  ).run(cmdId, "pi_camera_test", 0, "pending", null, now);
-  res.status(202).json({ id: cmdId, status: "pending" });
-});
-
 // ══════════════════════════════════════ LOGS / DETECTIONS / PHOTOS ═══════════
 app.get("/api/logs", requireUser, (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 100, 500);
@@ -420,6 +473,8 @@ app.get("/api/analytics/hourly", requireUser, (req, res) => {
 // connectivity and deterrence trends across the week. Deliberately does NOT
 // expose individual detection photos or a per-event log; that's the
 // registered user's own view (Activity/Analytics), not the admin's.
+// (Kept for backward compatibility — the Device Reports page below uses the
+// stored weekly_reports snapshots instead of this live aggregate.)
 app.get("/api/admin/weekly-report", requireUser, requireAdmin, (req, res) => {
   const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
   const until = new Date().toISOString();
@@ -446,6 +501,32 @@ app.get("/api/admin/weekly-report", requireUser, requireAdmin, (req, res) => {
     detections: { total: detectionStats.total, escalated: detectionStats.escalated },
     deterrence,
   });
+});
+
+// ══════════════════════════════════════ DEVICE REPORTS (stored snapshots) ═══
+// Backs the admin "Device Reports" page (Weekly tab). Reads/writes the
+// weekly_reports table that db.js already defines — this table existed in
+// the schema but had no routes reading or writing it until now, which is
+// why the frontend's requests were 404ing.
+app.get("/api/admin/weekly-reports", requireUser, requireAdmin, (req, res) => {
+  const rows = db
+    .prepare(
+      `SELECT id, device_owner, device_ip, period_since, period_until, generated_at, detections_total, detections_escalated
+       FROM weekly_reports ORDER BY generated_at DESC`
+    )
+    .all();
+  res.json(rows);
+});
+
+app.get("/api/admin/weekly-reports/:id", requireUser, requireAdmin, (req, res) => {
+  const row = db.prepare("SELECT * FROM weekly_reports WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ error: "Report not found" });
+  res.json({ ...row, entries: JSON.parse(row.entries_json || "[]") });
+});
+
+app.post("/api/admin/weekly-reports/generate", requireUser, requireAdmin, (req, res) => {
+  const id = generateWeeklyReport();
+  res.status(201).json({ id });
 });
 
 app.get("/api/photos/:id", (req, res) => {
@@ -516,13 +597,6 @@ app.post("/api/pi/ack", requireDevice, (req, res) => {
   if (!row) return res.status(404).json({ error: "No matching pending command" });
 
   db.prepare("UPDATE commands SET status = 'done' WHERE id = ?").run(row.id);
-
-  if (row.type === "pi_camera_test") {
-    // No trigger_event exists for this command type — broadcast the photo
-    // straight to whoever's watching instead of touching trigger_events.
-    broadcast("pi_camera_test_result", { command_id: row.id, status: status === "ok" ? "ok" : "fail", photo_url: photo_url || null });
-    return res.json({ ok: true });
-  }
 
   if (row.trigger_event_id) {
     db.prepare("UPDATE trigger_events SET status = ?, fired_at = ? WHERE id = ?").run(
