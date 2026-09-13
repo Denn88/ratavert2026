@@ -2040,9 +2040,9 @@ export default function App() {
         <div className="main">
           {ratAlert && <RatAlert seqStep={seqStep} lastNow={lastNow} onDismiss={() => setRatAlert(false)} />}
           <div className="content">
-            {page === "dashboard" && (
-              <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />
-            )}
+            {page === "dashboard" && (isAdmin
+              ? <DeviceReportsPage />
+              : <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />)}
             {page === "triggers" && <Triggers logs={logs} enabled={enabled} setEnabled={setEnabledOne} onFire={onFire} firingKey={firingKey} rpiConnected={rpiConnected} notice={triggerNotice} />}
             {page === "activity" && (isAdmin ? <DeviceReportsPage /> : <ActivityPage logs={logs} photos={photos} />)}
             {page === "analytics" && <AnalyticsPage logs={logs} chartData={chart} counts={counts} ratCount={ratCount} />}
