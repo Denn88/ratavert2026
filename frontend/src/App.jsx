@@ -2070,7 +2070,7 @@ export default function App() {
     { key: "activity",  label: isAdmin ? "Device Reports" : "Activity" },
     { key: "analytics", label: "Analytics" },
     { key: "settings",  label: "Settings" },
-  ];
+  ].filter((item) => !isAdmin || item.key !== "triggers");
 
   // ── Screen router ─────────────────────────────────────────────────────
   if (screen === "landing") return <LandingPage onLogin={() => setScreen("login")} theme={theme} onToggleTheme={toggleTheme} />;
