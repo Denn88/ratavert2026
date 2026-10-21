@@ -560,16 +560,93 @@ const css = `
   .hbar-fill { height:100%; border-radius:6px; transition:width .4s ease; }
   .hbar-val { width:34px; text-align:right; font-family:var(--font-mono); font-size:11px; color:var(--text); flex-shrink:0; }
 
-  /* DEVICE REPORTS — weekly / monthly toggle */
-  .dr-tabs { display:flex; gap:6px; margin-bottom:14px; }
-  .dr-tab { padding:8px 18px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
-    color:var(--dim); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
-  .dr-tab.active { background:rgba(16,185,129,.1); color:var(--accent); border-color:rgba(16,185,129,.3); }
-  .dr-tab:hover:not(.active) { background:var(--panel); color:var(--text); }
+  /* DEVICE REPORTS — responsive list view (mobile-first) */
   .dr-btn { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:var(--panel);
     color:var(--dim); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; font-family:var(--font-body); }
   .dr-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); background:rgba(16,185,129,.08); }
   .dr-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+  .rl { --rl-cols:minmax(0,1.3fr) minmax(0,.9fr) minmax(0,.8fr) minmax(0,.9fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.4fr);
+    width:100%; max-width:100%; min-width:0; }
+  .rl-top { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+  .rl-title { font-family:var(--font-mono); font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
+  .rl-title b { color:var(--accent); margin-left:6px; }
+  .rl-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .rl-actions .dr-btn { min-height:44px; }
+  .rl-tools { display:flex; gap:8px; margin-bottom:10px; }
+  .rl-input, .rl-select { width:100%; min-width:0; min-height:44px; padding:0 12px; border-radius:8px;
+    border:1px solid var(--border); background:var(--panel); color:var(--text);
+    font-size:16px; font-family:var(--font-body); outline:none; }
+  .rl-input:focus, .rl-select:focus { border-color:var(--accent); }
+  .rl-toggle { flex-shrink:0; min-height:44px; padding:0 16px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface); color:var(--dim); font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font-body); }
+  .rl-toggle.on { border-color:rgba(16,185,129,.4); color:var(--accent); background:rgba(16,185,129,.08); }
+  .rl-filters { display:none; grid-template-columns:1fr; gap:10px; background:var(--surface);
+    border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px; }
+  .rl-filters.open { display:grid; }
+  .rl-field { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .rl-lbl { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); font-family:var(--font-mono); }
+  .rl-field .dr-btn { min-height:44px; }
+  .rl-summary { font-size:11px; color:var(--dim); font-family:var(--font-mono); margin-bottom:10px; line-height:1.6; }
+  .rl-summary .bad { color:var(--red); font-weight:700; }
+  .rl-headrow { display:none; }
+  .rl-list { list-style:none; display:flex; flex-direction:column; gap:10px; min-width:0; }
+  .rl-item { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border);
+    border-radius:10px; overflow:hidden; min-width:0; }
+  .rl-item.success { border-left-color:var(--accent); }
+  .rl-item.fail { border-left-color:var(--red); background:rgba(248,113,113,.05); }
+  .rl-item.open { border-color:var(--muted); }
+  .rl-item.fail.open { border-left-color:var(--red); }
+  .rl-row { display:flex; flex-direction:column; gap:8px; padding:12px 14px; min-height:44px; cursor:pointer; min-width:0; }
+  .rl-row:hover { background:rgba(16,185,129,.03); }
+  .rl-row:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+  .rl-cell { display:flex; align-items:baseline; justify-content:space-between; gap:12px; font-size:13px;
+    min-width:0; overflow-wrap:anywhere; text-align:right; }
+  .rl-cell::before { content:attr(data-label); flex-shrink:0; font-family:var(--font-mono); font-size:9px;
+    letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); text-align:left; }
+  .rl-cell > span { min-width:0; }
+  .rl-caret { display:inline-block; width:14px; color:var(--dim); }
+  .rl-sub { display:block; font-size:10px; color:var(--dim); font-family:var(--font-mono); margin-top:2px; }
+  .rl-mono { font-family:var(--font-mono); font-size:11px; }
+  .rl-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:4px;
+    font-size:10px; font-family:var(--font-mono); font-weight:700; white-space:nowrap; }
+  .rl-badge.ok { background:rgba(16,185,129,.12); color:var(--accent); }
+  .rl-badge.fail { background:rgba(248,113,113,.14); color:var(--red); }
+  .rl-badge.pending { background:rgba(252,211,77,.12); color:var(--yellow); }
+  .rl-badge.na { background:rgba(90,158,111,.1); color:var(--dim); }
+  .rl-badge.online { background:rgba(16,185,129,.12); color:var(--accent); }
+  .rl-badge.offline { background:rgba(248,113,113,.1); color:var(--red); }
+  .rl-failnote { padding:9px 14px; font-size:11px; font-family:var(--font-mono); color:var(--red);
+    background:rgba(248,113,113,.08); border-top:1px solid rgba(248,113,113,.2); overflow-wrap:anywhere; }
+  .rl-detail { border-top:1px solid var(--border); padding:14px; background:var(--panel);
+    display:flex; flex-direction:column; gap:14px; min-width:0; }
+  .rl-dgrid { display:grid; grid-template-columns:1fr; gap:10px; min-width:0; }
+  .rl-d { min-width:0; }
+  .rl-d.wide { grid-column:1 / -1; }
+  .rl-d-lbl { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); font-family:var(--font-mono); margin-bottom:3px; }
+  .rl-d-val { font-size:13px; overflow-wrap:anywhere; line-height:1.5; }
+  .rl-photo { display:block; width:100%; max-width:420px; max-height:280px; object-fit:cover;
+    border-radius:8px; border:1px solid var(--border); }
+  .rl-pager { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; }
+  .rl-pager .dr-btn { min-height:44px; min-width:88px; }
+  .rl-page-info { font-family:var(--font-mono); font-size:11px; color:var(--dim); text-align:center; }
+  .rl-empty { text-align:center; color:var(--dim); padding:34px 16px; font-family:var(--font-mono); font-size:11px;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px; line-height:1.7; }
+
+  @media (min-width:700px) {
+    .rl-toggle { display:none; }
+    .rl-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); align-items:end; }
+    .rl-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px; }
+    .rl-cell { flex-direction:column; align-items:flex-start; text-align:left; gap:3px; }
+    .rl-dgrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+  @media (min-width:1100px) {
+    .rl-headrow { display:grid; grid-template-columns:var(--rl-cols); gap:12px; padding:0 14px 8px 17px;
+      font-family:var(--font-mono); font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
+    .rl-row { grid-template-columns:var(--rl-cols); align-items:center; gap:12px; }
+    .rl-cell::before { display:none; }
+    .rl-dgrid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  }
 
   @media (max-width:900px) {
     .status-bar { grid-template-columns:repeat(3,1fr); }
@@ -587,6 +664,25 @@ const css = `
     .tgrid      { grid-template-columns:1fr; }
     .status-bar { grid-template-columns:repeat(2,1fr); }
     .an-grid    { grid-template-columns:1fr; }
+  }
+
+  /* RESPONSIVE SHELL — lets the Device Reports list fit phones (sidebar becomes a top strip).
+     Delete this block to restore the original fixed sidebar on small screens. */
+  @media (max-width:768px) {
+    .main { min-height:0; }
+    .content { padding:12px; }
+    .body { flex-direction:column; }
+    .sidebar { width:100%; min-width:0; flex-direction:row; align-items:center; padding:6px 8px;
+      border-right:none; border-bottom:1px solid var(--border); overflow-x:auto; overflow-y:hidden; }
+    .sb-section { display:flex; align-items:center; gap:4px; padding:0; margin:0; }
+    .sb-label, .sb-divider, .rpi-panel, .det-panel, .sb-footer { display:none; }
+    .sb-item { white-space:nowrap; min-height:44px; margin:0; }
+    .sb-item.active { box-shadow:inset 0 -3px 0 var(--accent); }
+    .admin-zone { display:flex; margin:0 0 0 4px; padding:2px; }
+    .navbar { padding:0 10px; }
+    .nav-brand { margin-right:8px; letter-spacing:2px; }
+    .nav-right { gap:4px; min-width:0; }
+    .nav-time, .nav-user { display:none; }
   }
 `;
 
@@ -868,285 +964,263 @@ function AccessDenied() {
 // recent activity) as a regular user — Device Reports and Admin Panel remain
 // available as separate sidebar items for account/device management.
 
-// ── Device Reports (admin) ───────────────────────────────────────────────────
-// This replaces the old single "Weekly Report" page. It keeps the existing
-// weekly snapshots (weekly_reports table, generated every Sunday 00:00,
-// fetched via api.getWeeklyReports()) as the WEEKLY tab exactly as before,
-// and adds a MONTHLY tab that groups those same per-device weekly snapshots
-// by calendar month — no backend/schema change needed since every field the
-// monthly rollup needs (device_owner, device_ip, detections_total,
-// detections_escalated, period_since/until, generated_at) is already stored
-// per weekly snapshot.
+// ── Device Reports (admin) — responsive list view ───────────────────────────
+// One row per entry stored inside the weekly report snapshots (weekly_reports
+// table, fetched with api.getWeeklyReports() and api.getWeeklyReportDetail()).
+// Entries from overlapping snapshots are de-duplicated by entry id and shown
+// newest first. The list replaces the former cards / charts / table layout.
+const RL_PAGE_SIZE = 10;
+const RL_MAX_REPORTS = 12; // most recent snapshots loaded into the list
+const RL_RESULT_META = {
+  success: { label: "Successful",   cls: "ok",      icon: "✓" },
+  fail:    { label: "Unsuccessful", cls: "fail",    icon: "✕" },
+  pending: { label: "Pending",      cls: "pending", icon: "◌" },
+  na:      { label: "No deterrent", cls: "na",      icon: "–" },
+};
+function fmtFull(d) {
+  return new Date(d).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
 function DeviceReportsPage() {
-  const [range, setRange] = useState("weekly"); // "weekly" | "monthly"
-  const [reports, setReports] = useState(null);
+  const [rows, setRows] = useState(null);
+  const [deviceStatus, setDeviceStatus] = useState(null);
   const [error, setError] = useState(null);
-  const [selected, setSelected] = useState(null); // null | "loading" | full report object
-  const [detailError, setDetailError] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [search, setSearch] = useState("");
+  const [deviceF, setDeviceF] = useState("all");
+  const [statusF, setStatusF] = useState("all");
+  const [resultF, setResultF] = useState("all");
+  const [fromD, setFromD] = useState("");
+  const [toD, setToD] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [openId, setOpenId] = useState(null);
 
-  function loadList() {
-    api.getWeeklyReports().then(setReports).catch((e) => setError(e.message || "Failed to load"));
-  }
-  useEffect(() => { loadList(); }, []);
-
-  function openDetail(id) {
-    setDetailError(null);
-    setSelected("loading");
-    api.getWeeklyReportDetail(id).then(setSelected).catch((e) => { setDetailError(e.message || "Failed to load"); setSelected(null); });
-  }
+  const load = useCallback(async () => {
+    setError(null);
+    try {
+      const [list, status] = await Promise.all([
+        api.getWeeklyReports(),
+        api.getStatus().catch(() => null),
+      ]);
+      setDeviceStatus(status);
+      const details = await Promise.all(
+        list.slice(0, RL_MAX_REPORTS).map((r) => api.getWeeklyReportDetail(r.id).catch(() => null))
+      );
+      const byId = new Map();
+      details.forEach((rep) => { // newest snapshot first
+        if (!rep) return;
+        const autoTimes = new Set(rep.entries.filter((e) => !e.isRat && e.user === "auto-detect").map((e) => e.ts));
+        rep.entries.forEach((e) => {
+          if (e.isRat && autoTimes.has(e.ts)) return; // already represented by its deterrent rows
+          if (byId.has(e.id)) return;
+          const isAuto = e.user === "auto-detect";
+          byId.set(e.id, {
+            id: e.id,
+            ts: e.ts,
+            account: rep.device_owner || null,
+            deviceId: rep.device_ip || "Unknown",
+            periodSince: rep.period_since,
+            periodUntil: rep.period_until,
+            generatedAt: rep.generated_at,
+            deterrent: e.isRat ? null : (e.isLast ? TYPE_META.last.label : (TYPE_META[e.type]?.label || e.type)),
+            result: e.isRat ? "na" : e.status === "ok" ? "success" : e.status === "fail" ? "fail" : "pending",
+            detected: e.isRat || isAuto,
+            triggeredBy: isAuto ? "Automatic response" : (e.user || "—"),
+            detail: e.detail || "—",
+            confidence: e.confidence,
+            photoId: e.photoId,
+          });
+        });
+      });
+      setRows(Array.from(byId.values()).sort((a, b) => new Date(b.ts) - new Date(a.ts)));
+    } catch (e) {
+      setError(e.message || "Failed to load");
+    }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setPage(0); setOpenId(null); }, [search, deviceF, statusF, resultF, fromD, toD]);
 
   async function generateNow() {
     setGenerating(true);
-    try { await api.generateWeeklyReportNow(); loadList(); }
+    try { await api.generateWeeklyReportNow(); await load(); }
     catch (e) { setError(e.message || "Failed to generate"); }
     finally { setGenerating(false); }
   }
 
-  // Group the stored weekly snapshots by (device_owner, calendar month of
-  // period_since) to produce a maintenance-friendly monthly rollup per device.
-  function buildMonthlyRows(list) {
-    const byKey = new Map();
-    list.forEach((r) => {
-      const d = new Date(r.period_since);
-      const monthKey = `${r.device_owner || "—"}::${d.getFullYear()}-${d.getMonth()}`;
-      if (!byKey.has(monthKey)) {
-        byKey.set(monthKey, {
-          key: monthKey,
-          device_owner: r.device_owner,
-          device_ip: r.device_ip,
-          monthLabel: d.toLocaleDateString(undefined, { month: "long", year: "numeric" }),
-          detections_total: 0,
-          detections_escalated: 0,
-          reportCount: 0,
-          lastSeen: r.generated_at,
-        });
-      }
-      const row = byKey.get(monthKey);
-      row.detections_total += r.detections_total || 0;
-      row.detections_escalated += r.detections_escalated || 0;
-      row.reportCount += 1;
-      row.device_ip = r.device_ip || row.device_ip;
-      if (new Date(r.generated_at) > new Date(row.lastSeen)) row.lastSeen = r.generated_at;
-    });
-    return Array.from(byKey.values()).sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
-  }
+  if (error) return <div className="lcard" style={{ padding: 20, color: "var(--red)" }}>⚠ Failed to load reports: {error}</div>;
+  if (!rows) return <div className="lcard" style={{ padding: 20, color: "var(--dim)" }}>Loading device reports…</div>;
 
-  // ── Level 2: weekly report detail (unchanged) ────────────────────────────
-  if (selected) {
-    if (selected === "loading") return <div className="lcard" style={{ padding: 20, color: "var(--dim)" }}>Loading report…</div>;
-    if (detailError) return <div className="lcard" style={{ padding: 20, color: "var(--red)" }}>⚠ {detailError}</div>;
-    const r = selected;
-    return (
-      <>
-        <div className="lcard" style={{ padding: "14px 18px", marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <button className="dr-btn" onClick={() => setSelected(null)}>← Back to reports</button>
+  // The device reports its live state only for the Pi currently linked to the backend.
+  const isOnline = (r) => !!(deviceStatus && deviceStatus.online && deviceStatus.ip && deviceStatus.ip === r.deviceId);
+
+  const q = search.trim().toLowerCase();
+  const fromTs = fromD ? new Date(`${fromD}T00:00:00`).getTime() : null;
+  const toTs = toD ? new Date(`${toD}T23:59:59.999`).getTime() : null;
+  const deviceOptions = Array.from(new Set(rows.map((r) => r.deviceId)));
+
+  const filtered = rows.filter((r) => {
+    if (deviceF !== "all" && r.deviceId !== deviceF) return false;
+    if (statusF !== "all" && (statusF === "online") !== isOnline(r)) return false;
+    if (resultF !== "all" && r.result !== resultF) return false;
+    const t = new Date(r.ts).getTime();
+    if (fromTs != null && t < fromTs) return false;
+    if (toTs != null && t > toTs) return false;
+    if (q) {
+      const hay = [r.deviceId, r.account, r.deterrent, r.detail, r.triggeredBy, RL_RESULT_META[r.result].label, "Not set"].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const failCount = filtered.filter((r) => r.result === "fail").length;
+  const pages = Math.max(1, Math.ceil(filtered.length / RL_PAGE_SIZE));
+  const safePage = Math.min(page, pages - 1);
+  const visible = filtered.slice(safePage * RL_PAGE_SIZE, (safePage + 1) * RL_PAGE_SIZE);
+  const activeFilters = [deviceF !== "all", statusF !== "all", resultF !== "all", !!fromD, !!toD].filter(Boolean).length;
+
+  function clearFilters() { setSearch(""); setDeviceF("all"); setStatusF("all"); setResultF("all"); setFromD(""); setToD(""); }
+  function toggleRow(id) { setOpenId((cur) => (cur === id ? null : id)); }
+
+  return (
+    <div className="rl">
+      <div className="rl-top">
+        <span className="rl-title">Device Reports<b>{filtered.length}</b></span>
+        <div className="rl-actions">
+          <button className="dr-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate now (test)"}</button>
           <button className="dr-btn" onClick={() => window.print()}>Print</button>
         </div>
-        <div className="status-bar">
-          {[
-            { label: "Account",     val: r.device_owner || "—", sub: "IoT device owner" },
-            { label: "Device IP",   val: r.device_ip || "—", sub: "at time of report" },
-            { label: "Period",      val: `${new Date(r.period_since).toLocaleDateString()} – ${new Date(r.period_until).toLocaleDateString()}`, sub: "7-day window" },
-            { label: "Detections",  val: r.detections_total, color: "var(--red)", sub: `${r.detections_escalated} escalated to Last Resort` },
-          ].map((s, i) => (
-            <div key={i}><div className="si-label">{s.label}</div>
-              <div className="si-val" style={{ color: s.color }}>{s.val}</div>
-              <div className="si-sub">{s.sub}</div></div>
-          ))}
+      </div>
+
+      <div className="rl-tools">
+        <input className="rl-input" type="search" placeholder="Search device, account, deterrent…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search device reports" />
+        <button className={`rl-toggle ${filtersOpen || activeFilters ? "on" : ""}`} onClick={() => setFiltersOpen((v) => !v)} aria-expanded={filtersOpen}>
+          Filters{activeFilters ? ` (${activeFilters})` : ""}
+        </button>
+      </div>
+
+      <div className={`rl-filters ${filtersOpen ? "open" : ""}`}>
+        <div className="rl-field">
+          <label className="rl-lbl" htmlFor="rl-device">Device</label>
+          <select id="rl-device" className="rl-select" value={deviceF} onChange={(e) => setDeviceF(e.target.value)}>
+            <option value="all">All devices</option>
+            {deviceOptions.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
         </div>
-        <div className="lcard" style={{ marginTop: 16 }}>
-          <div className="lhdr"><span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Activity Log — This Report's Week</span></div>
-          <table className="ltable">
-            <thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Status</th><th>Confidence</th><th>Detail</th></tr></thead>
-            <tbody>
-              {r.entries.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO ACTIVITY THIS WEEK</td></tr>}
-              {r.entries.map((l) => (
-                <tr key={l.id}>
-                  <td><span className="ts">{l.dateStr}</span></td>
-                  <td><span className="ts">{l.tsStr}</span></td>
-                  <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
-                  <td>{statusBadge(l.status)}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.confidence != null ? Math.round(l.confidence * 100) + "%" : "—"}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="rl-field">
+          <label className="rl-lbl" htmlFor="rl-status">Status</label>
+          <select id="rl-status" className="rl-select" value={statusF} onChange={(e) => setStatusF(e.target.value)}>
+            <option value="all">All statuses</option>
+            <option value="online">Online</option>
+            <option value="offline">Offline</option>
+          </select>
         </div>
-      </>
-    );
-  }
-
-  if (error) return <div className="lcard" style={{ padding: 20, color: "var(--red)" }}>⚠ Failed to load reports: {error}</div>;
-  if (!reports) return <div className="lcard" style={{ padding: 20, color: "var(--dim)" }}>Loading device reports…</div>;
-
-  const monthlyRows = buildMonthlyRows(reports);
-  const rows = range === "weekly" ? reports : monthlyRows;
-
-  const totalReports = rows.length;
-  const totalDetections = rows.reduce((a, r) => a + (r.detections_total || 0), 0);
-  const totalEscalated = rows.reduce((a, r) => a + (r.detections_escalated || 0), 0);
-  const uniqueDevices = new Set(rows.map((r) => r.device_owner || "—")).size;
-  const lastGenerated = rows.length
-    ? rows.reduce((latest, r) => {
-        const t = range === "weekly" ? r.generated_at : r.lastSeen;
-        return !latest || new Date(t) > new Date(latest) ? t : latest;
-      }, null)
-    : null;
-  const resolvedPct = totalDetections ? Math.round(((totalDetections - totalEscalated) / totalDetections) * 100) : 0;
-  const avgPerReport = totalReports ? Math.round(totalDetections / totalReports) : 0;
-
-  // Chronological (oldest → newest), last 8 periods, for the bar chart.
-  const chartRows = [...rows]
-    .sort((a, b) => new Date(range === "weekly" ? a.generated_at : a.lastSeen) - new Date(range === "weekly" ? b.generated_at : b.lastSeen))
-    .slice(-8);
-  const chartMax = Math.max(...chartRows.map((r) => r.detections_total || 0), 1);
-
-  return (
-    <>
-      <div className="dr-tabs">
-        <button className={`dr-tab ${range === "weekly" ? "active" : ""}`} onClick={() => setRange("weekly")}>Weekly</button>
-        <button className={`dr-tab ${range === "monthly" ? "active" : ""}`} onClick={() => setRange("monthly")}>Monthly</button>
+        <div className="rl-field">
+          <label className="rl-lbl" htmlFor="rl-result">Result</label>
+          <select id="rl-result" className="rl-select" value={resultF} onChange={(e) => setResultF(e.target.value)}>
+            <option value="all">All results</option>
+            <option value="success">Successful</option>
+            <option value="fail">Unsuccessful</option>
+            <option value="pending">Pending</option>
+          </select>
+        </div>
+        <div className="rl-field">
+          <label className="rl-lbl" htmlFor="rl-from">From date</label>
+          <input id="rl-from" className="rl-input" type="date" value={fromD} max={toD || undefined} onChange={(e) => setFromD(e.target.value)} />
+        </div>
+        <div className="rl-field">
+          <label className="rl-lbl" htmlFor="rl-to">To date</label>
+          <input id="rl-to" className="rl-input" type="date" value={toD} min={fromD || undefined} onChange={(e) => setToD(e.target.value)} />
+        </div>
+        <div className="rl-field">
+          <button className="dr-btn" onClick={clearFilters}>Clear filters</button>
+        </div>
       </div>
 
-      <div className="status-bar">
-        {[
-          { label: "Report Type", val: range === "weekly" ? "WEEKLY" : "MONTHLY", color: "var(--accent)", sub: range === "weekly" ? "7-day snapshots" : "grouped by month" },
-          { label: "Total Detections", val: totalDetections, color: "var(--red)", sub: "across all periods" },
-          { label: "Escalated", val: totalEscalated, color: "var(--orange)", sub: "to Last Resort" },
-          { label: "Devices", val: uniqueDevices, color: "var(--teal)", sub: "reporting accounts" },
-          { label: "Last Generated", val: lastGenerated ? new Date(lastGenerated).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "--:--", color: "var(--accent)", sub: lastGenerated ? new Date(lastGenerated).toLocaleDateString() : "no reports yet" },
-        ].map((s, i) => (
-          <div key={i}><div className="si-label">{s.label}</div>
-            <div className="si-val" style={{ color: s.color }}>{s.val}</div>
-            <div className="si-sub">{s.sub}</div></div>
-        ))}
+      <div className="rl-summary">
+        Showing {visible.length} of {filtered.length} entries
+        {failCount > 0 && <> · <span className="bad">{failCount} unsuccessful</span></>}
       </div>
 
-      <div className="metrics">
-        {[
-          { cls: "mc1", label: "Reports", val: totalReports, sub: <span className="badge bg">stored snapshots</span> },
-          { cls: "mc2", label: "Resolution Rate", val: `${resolvedPct}%`, sub: <span style={{ color: "var(--teal)" }}>without escalation</span> },
-          { cls: "mc3", label: "Avg / Report", val: avgPerReport, sub: "detections" },
-          { cls: "mc4", label: "Escalated", val: totalEscalated, sub: <span className="badge br">to Last Resort</span> },
-        ].map((m, i) => (
-          <div key={i} className={`mc ${m.cls}`}>
-            <div className="mc-lbl">{m.label}</div>
-            <div className="mc-val">{m.val}</div>
-            <div className="mc-sub">{m.sub}</div>
+      {filtered.length === 0 ? (
+        <div className="rl-empty">
+          {rows.length === 0
+            ? <>NO REPORT ENTRIES YET<br />THE FIRST REPORT GENERATES SUNDAY AT MIDNIGHT</>
+            : <>NO ENTRIES MATCH YOUR SEARCH OR FILTERS</>}
+        </div>
+      ) : (
+        <>
+          <div className="rl-headrow" aria-hidden="true">
+            <span>Device ID</span><span>Location</span><span>Status</span><span>Detection Time</span><span>Deterrent Used</span><span>Result</span><span>Timestamp</span>
           </div>
-        ))}
-      </div>
-
-      <div className="charts-row">
-        <div className="cc">
-          <div className="cc-hdr">
-            <span className="cc-title">Detections — Recent {range === "weekly" ? "Weeks" : "Months"}</span>
-            <div style={{ display: "flex", gap: "12px" }}>
-              <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--red)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--red)", display: "inline-block" }} />Detections</span>
-              <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--orange)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--orange)", display: "inline-block" }} />Escalated</span>
-            </div>
-          </div>
-          {chartRows.length === 0 ? (
-            <div style={{ color: "var(--dim)", fontSize: 12, textAlign: "center", padding: "50px 0" }}>Not enough data yet.</div>
-          ) : (
-            <div className="week-bars">
-              {chartRows.map((r, i) => (
-                <div className="week-col" key={i}>
-                  <div className="week-bar-pair">
-                    <div className="week-bar" style={{ height: `${Math.round(((r.detections_total || 0) / chartMax) * 120) + 2}px`, background: "var(--red)" }} title={`${r.detections_total} detections`} />
-                    <div className="week-bar" style={{ height: `${Math.round(((r.detections_escalated || 0) / chartMax) * 120) + 2}px`, background: "var(--orange)" }} title={`${r.detections_escalated} escalated`} />
+          <ul className="rl-list">
+            {visible.map((r) => {
+              const online = isOnline(r);
+              const meta = RL_RESULT_META[r.result];
+              const open = openId === r.id;
+              const details = [
+                { l: "Account (bound)", v: r.account || "Unlinked" },
+                { l: "Device ID", v: r.deviceId },
+                { l: "Location", v: "Not set" },
+                { l: "Device Status", v: online ? "Online" : "Offline" },
+                { l: "Deterrent Used", v: r.deterrent || "None recorded" },
+                { l: "Result", v: meta.label },
+                { l: "Triggered By", v: r.triggeredBy },
+                { l: "Detection Time", v: r.detected ? fmtFull(r.ts) : "—" },
+                { l: "Timestamp", v: fmtFull(r.ts) },
+                { l: "Confidence", v: r.confidence != null ? `${Math.round(r.confidence * 100)}%` : "—" },
+                { l: "Report Period", v: `${new Date(r.periodSince).toLocaleDateString()} – ${new Date(r.periodUntil).toLocaleDateString()}` },
+                { l: "Report Generated", v: fmtFull(r.generatedAt) },
+                { l: "Details", v: r.detail, wide: true },
+              ];
+              return (
+                <li key={r.id} className={`rl-item ${r.result === "fail" ? "fail" : r.result === "success" ? "success" : ""} ${open ? "open" : ""}`}>
+                  <div
+                    className="rl-row"
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={open}
+                    onClick={() => toggleRow(r.id)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleRow(r.id); } }}
+                  >
+                    <div className="rl-cell" data-label="Device ID">
+                      <span><span className="rl-caret">{open ? "▾" : "▸"}</span><span className="rl-mono">{r.deviceId}</span><span className="rl-sub">Account: {r.account || "Unlinked"}</span></span>
+                    </div>
+                    <div className="rl-cell" data-label="Location"><span>Not set</span></div>
+                    <div className="rl-cell" data-label="Status"><span className={`rl-badge ${online ? "online" : "offline"}`}>● {online ? "Online" : "Offline"}</span></div>
+                    <div className="rl-cell" data-label="Detection Time"><span className="rl-mono">{r.detected ? fmtT(r.ts) : "—"}</span></div>
+                    <div className="rl-cell" data-label="Deterrent Used"><span>{r.deterrent || "—"}</span></div>
+                    <div className="rl-cell" data-label="Result"><span className={`rl-badge ${meta.cls}`}>{meta.icon} {meta.label}</span></div>
+                    <div className="rl-cell" data-label="Timestamp"><span className="rl-mono">{fmtFull(r.ts)}</span></div>
                   </div>
-                  <span className="week-lbl">
-                    {range === "weekly" ? new Date(r.period_since).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : (r.monthLabel || "").split(" ")[0].slice(0, 3)}
-                  </span>
-                </div>
-              ))}
+                  {r.result === "fail" && <div className="rl-failnote">✕ Deterrent attempt unsuccessful · {fmtFull(r.ts)}</div>}
+                  {open && (
+                    <div className="rl-detail">
+                      <div className="rl-dgrid">
+                        {details.map((d) => (
+                          <div key={d.l} className={`rl-d ${d.wide ? "wide" : ""}`}>
+                            <div className="rl-d-lbl">{d.l}</div>
+                            <div className="rl-d-val">{d.v}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {r.photoId && <img className="rl-photo" src={api.photoUrl(r.photoId)} alt="Captured detection" loading="lazy" />}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          {pages > 1 && (
+            <div className="rl-pager">
+              <button className="dr-btn" onClick={() => setPage(Math.max(0, safePage - 1))} disabled={safePage === 0}>← Previous</button>
+              <span className="rl-page-info">Page {safePage + 1} of {pages}</span>
+              <button className="dr-btn" onClick={() => setPage(Math.min(pages - 1, safePage + 1))} disabled={safePage >= pages - 1}>Next →</button>
             </div>
           )}
-        </div>
-        <div className="cc">
-          <div className="cc-hdr"><span className="cc-title">Resolved vs Escalated</span></div>
-          <ReportsDonut resolved={Math.max(totalDetections - totalEscalated, 0)} escalated={totalEscalated} />
-        </div>
-      </div>
-
-      <div className="lcard">
-        <div className="lhdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>{range === "weekly" ? "Weekly Device Reports" : "Monthly Device Reports"}</span>
-          {range === "weekly" && <button className="dr-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate now (test)"}</button>}
-        </div>
-        {range === "weekly" ? (
-          <table className="ltable">
-            <thead><tr><th>Account</th><th>Device</th><th>Period</th><th>Generated</th><th /></tr></thead>
-            <tbody>
-              {reports.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO REPORTS YET — FIRST ONE GENERATES SUNDAY AT MIDNIGHT</td></tr>}
-              {reports.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.device_owner || "—"}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{new Date(r.period_since).toLocaleDateString()} – {new Date(r.period_until).toLocaleDateString()}</td>
-                  <td><span className="ts">{new Date(r.generated_at).toLocaleString()}</span></td>
-                  <td><button className="dr-btn" onClick={() => openDetail(r.id)}>View Details →</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <table className="ltable">
-            <thead><tr><th>Account</th><th>Device</th><th>Month</th><th>Detections</th><th>Escalated</th><th>Last Seen</th></tr></thead>
-            <tbody>
-              {monthlyRows.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO MONTHLY DATA YET — ACCUMULATES FROM WEEKLY REPORTS</td></tr>}
-              {monthlyRows.map((r) => (
-                <tr key={r.key}>
-                  <td>{r.device_owner || "—"}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.monthLabel}</td>
-                  <td style={{ color: "var(--red)", fontWeight: 700 }}>{r.detections_total}</td>
-                  <td style={{ color: "var(--orange)" }}>{r.detections_escalated}</td>
-                  <td><span className="ts">{new Date(r.lastSeen).toLocaleString()}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </>
-  );
-}
-
-// Two-color donut (resolved vs escalated) reusing the same .donut-ring / .donut
-// CSS the Dashboard's per-type DonutChart uses, generalized to two segments.
-function ReportsDonut({ resolved, escalated }) {
-  const total = resolved + escalated || 1;
-  const r = 36, cx = 46, cy = 46, circ = 2 * Math.PI * r;
-  const resolvedDash = (resolved / total) * circ;
-  return (
-    <div>
-      <div className="donut-ring">
-        <svg viewBox="0 0 92 92" className="donut" width="90" height="90">
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border)" strokeWidth="9" />
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--accent)" strokeWidth="9" strokeDasharray={`${resolvedDash} ${circ - resolvedDash}`} />
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--red)" strokeWidth="9" strokeDasharray={`${circ - resolvedDash} ${resolvedDash}`} strokeDashoffset={-resolvedDash} />
-        </svg>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-            <div style={{ width: "7px", height: "7px", borderRadius: "2px", background: "var(--accent)" }} />
-            <span style={{ color: "var(--dim)" }}>Resolved</span>
-          </div>
-          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>{resolved}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-            <div style={{ width: "7px", height: "7px", borderRadius: "2px", background: "var(--red)" }} />
-            <span style={{ color: "var(--dim)" }}>Escalated</span>
-          </div>
-          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>{escalated}</span>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
