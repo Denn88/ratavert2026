@@ -560,91 +560,110 @@ const css = `
   .hbar-fill { height:100%; border-radius:6px; transition:width .4s ease; }
   .hbar-val { width:34px; text-align:right; font-family:var(--font-mono); font-size:11px; color:var(--text); flex-shrink:0; }
 
-  /* DEVICE REPORTS — responsive list view (mobile-first) */
+  /* DEVICE REPORTS — responsive list view (mobile-first, Android-style rows) */
   .dr-btn { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:var(--panel);
     color:var(--dim); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; font-family:var(--font-body); }
   .dr-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); background:rgba(16,185,129,.08); }
   .dr-btn:disabled { opacity:.5; cursor:not-allowed; }
 
-  .rl { --rl-cols:minmax(0,1.3fr) minmax(0,.9fr) minmax(0,.8fr) minmax(0,.9fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.4fr);
-    width:100%; max-width:100%; min-width:0; }
-  .rl-top { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
-  .rl-title { font-family:var(--font-mono); font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
+  .rl { --rl-cols:32px minmax(0,1.4fr) minmax(0,.8fr) minmax(0,.8fr) minmax(0,.9fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.5fr);
+    width:100%; max-width:100%; min-width:0; -webkit-tap-highlight-color:transparent; }
+  .rl-top { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+  .rl-title { font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
   .rl-title b { color:var(--accent); margin-left:6px; }
-  .rl-actions { display:flex; gap:8px; flex-wrap:wrap; }
-  .rl-actions .dr-btn { min-height:44px; }
-  .rl-tools { display:flex; gap:8px; margin-bottom:10px; }
-  .rl-input, .rl-select { width:100%; min-width:0; min-height:44px; padding:0 12px; border-radius:8px;
+  .rl-actions { display:flex; gap:6px; }
+  .rl-actions .dr-btn { min-height:40px; padding:0 12px; }
+  .rl-tools { display:flex; gap:8px; margin-bottom:8px; }
+  .rl-input, .rl-select { width:100%; min-width:0; min-height:44px; padding:0 12px; border-radius:10px;
     border:1px solid var(--border); background:var(--panel); color:var(--text);
-    font-size:16px; font-family:var(--font-body); outline:none; }
+    font-size:15px; font-family:var(--font-body); outline:none; }
   .rl-input:focus, .rl-select:focus { border-color:var(--accent); }
-  .rl-toggle { flex-shrink:0; min-height:44px; padding:0 16px; border-radius:8px; border:1px solid var(--border);
+  .rl-toggle { flex-shrink:0; min-height:44px; padding:0 14px; border-radius:10px; border:1px solid var(--border);
     background:var(--surface); color:var(--dim); font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font-body); }
   .rl-toggle.on { border-color:rgba(16,185,129,.4); color:var(--accent); background:rgba(16,185,129,.08); }
-  .rl-filters { display:none; grid-template-columns:1fr; gap:10px; background:var(--surface);
-    border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:12px; }
+  .rl-filters { display:none; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; background:var(--surface);
+    border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:10px; }
   .rl-filters.open { display:grid; }
-  .rl-field { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .rl-field { display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .rl-field.span2 { grid-column:1 / -1; }
   .rl-lbl { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); font-family:var(--font-mono); }
   .rl-field .dr-btn { min-height:44px; }
-  .rl-summary { font-size:11px; color:var(--dim); font-family:var(--font-mono); margin-bottom:10px; line-height:1.6; }
+  .rl-summary { font-size:11px; color:var(--dim); font-family:var(--font-mono); margin:2px 2px 8px; line-height:1.6; }
   .rl-summary .bad { color:var(--red); font-weight:700; }
   .rl-headrow { display:none; }
-  .rl-list { list-style:none; display:flex; flex-direction:column; gap:10px; min-width:0; }
-  .rl-item { background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--border);
-    border-radius:10px; overflow:hidden; min-width:0; }
+
+  /* the list: one bordered block, flat rows separated by dividers */
+  .rl-list { list-style:none; background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; min-width:0; }
+  .rl-item { border-bottom:1px solid var(--border); border-left:3px solid transparent; min-width:0; }
+  .rl-item:last-child { border-bottom:none; }
   .rl-item.success { border-left-color:var(--accent); }
   .rl-item.fail { border-left-color:var(--red); background:rgba(248,113,113,.05); }
-  .rl-item.open { border-color:var(--muted); }
-  .rl-item.fail.open { border-left-color:var(--red); }
-  .rl-row { display:flex; flex-direction:column; gap:8px; padding:12px 14px; min-height:44px; cursor:pointer; min-width:0; }
-  .rl-row:hover { background:rgba(16,185,129,.03); }
+  .rl-item.open { background:rgba(16,185,129,.04); }
+  .rl-item.fail.open { background:rgba(248,113,113,.07); }
+
+  .rl-row { display:grid; grid-template-columns:32px minmax(0,1fr) auto;
+    grid-template-areas:"ic det res" "ic dev sta" "ic loc dtm" "ic ts ts";
+    column-gap:10px; row-gap:3px; align-items:center; padding:12px 12px 12px 9px; min-height:64px;
+    cursor:pointer; min-width:0; }
+  .rl-row:active { background:rgba(16,185,129,.1); }
   .rl-row:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
-  .rl-cell { display:flex; align-items:baseline; justify-content:space-between; gap:12px; font-size:13px;
-    min-width:0; overflow-wrap:anywhere; text-align:right; }
-  .rl-cell::before { content:attr(data-label); flex-shrink:0; font-family:var(--font-mono); font-size:9px;
-    letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); text-align:left; }
-  .rl-cell > span { min-width:0; }
-  .rl-caret { display:inline-block; width:14px; color:var(--dim); }
-  .rl-sub { display:block; font-size:10px; color:var(--dim); font-family:var(--font-mono); margin-top:2px; }
-  .rl-mono { font-family:var(--font-mono); font-size:11px; }
-  .rl-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:4px;
+  .rl-ic { grid-area:ic; align-self:start; width:30px; height:30px; border-radius:50%; display:flex;
+    align-items:center; justify-content:center; font-size:14px; font-weight:700; }
+  .rl-ic.ok { background:rgba(16,185,129,.14); color:var(--accent); }
+  .rl-ic.fail { background:rgba(248,113,113,.16); color:var(--red); }
+  .rl-ic.pending { background:rgba(252,211,77,.14); color:var(--yellow); }
+  .rl-ic.na { background:rgba(90,158,111,.12); color:var(--dim); }
+  .rl-c { min-width:0; overflow-wrap:anywhere; }
+  .rl-det { grid-area:det; font-size:15px; font-weight:600; color:var(--text); }
+  .rl-res { grid-area:res; justify-self:end; }
+  .rl-dev { grid-area:dev; font-size:12px; color:var(--dim); font-family:var(--font-mono); }
+  .rl-sta { grid-area:sta; justify-self:end; font-size:11px; font-family:var(--font-mono); font-weight:700; }
+  .rl-sta.online { color:var(--accent); }
+  .rl-sta.offline { color:var(--red); }
+  .rl-loc { grid-area:loc; font-size:11px; color:var(--dim); }
+  .rl-dtm { grid-area:dtm; justify-self:end; font-size:11px; color:var(--dim); font-family:var(--font-mono); }
+  .rl-ts  { grid-area:ts; font-size:11px; color:var(--dim); font-family:var(--font-mono); }
+  .rl-loc::before, .rl-dtm::before, .rl-ts::before { content:attr(data-label) ": "; opacity:.7; }
+  .rl-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:6px;
     font-size:10px; font-family:var(--font-mono); font-weight:700; white-space:nowrap; }
   .rl-badge.ok { background:rgba(16,185,129,.12); color:var(--accent); }
-  .rl-badge.fail { background:rgba(248,113,113,.14); color:var(--red); }
+  .rl-badge.fail { background:rgba(248,113,113,.16); color:var(--red); }
   .rl-badge.pending { background:rgba(252,211,77,.12); color:var(--yellow); }
   .rl-badge.na { background:rgba(90,158,111,.1); color:var(--dim); }
-  .rl-badge.online { background:rgba(16,185,129,.12); color:var(--accent); }
-  .rl-badge.offline { background:rgba(248,113,113,.1); color:var(--red); }
-  .rl-failnote { padding:9px 14px; font-size:11px; font-family:var(--font-mono); color:var(--red);
-    background:rgba(248,113,113,.08); border-top:1px solid rgba(248,113,113,.2); overflow-wrap:anywhere; }
-  .rl-detail { border-top:1px solid var(--border); padding:14px; background:var(--panel);
-    display:flex; flex-direction:column; gap:14px; min-width:0; }
-  .rl-dgrid { display:grid; grid-template-columns:1fr; gap:10px; min-width:0; }
+  .rl-failnote { padding:8px 12px 8px 51px; font-size:11px; font-family:var(--font-mono); color:var(--red);
+    border-top:1px dashed rgba(248,113,113,.3); overflow-wrap:anywhere; }
+  .rl-detail { border-top:1px solid var(--border); padding:12px 12px 14px 51px; background:var(--panel);
+    display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .rl-dgrid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 12px; min-width:0; }
   .rl-d { min-width:0; }
   .rl-d.wide { grid-column:1 / -1; }
-  .rl-d-lbl { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); font-family:var(--font-mono); margin-bottom:3px; }
-  .rl-d-val { font-size:13px; overflow-wrap:anywhere; line-height:1.5; }
-  .rl-photo { display:block; width:100%; max-width:420px; max-height:280px; object-fit:cover;
-    border-radius:8px; border:1px solid var(--border); }
-  .rl-pager { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; }
-  .rl-pager .dr-btn { min-height:44px; min-width:88px; }
+  .rl-d-lbl { font-size:9px; letter-spacing:1.2px; text-transform:uppercase; color:var(--dim); font-family:var(--font-mono); margin-bottom:2px; }
+  .rl-d-val { font-size:13px; overflow-wrap:anywhere; line-height:1.45; }
+  .rl-photo { display:block; width:100%; max-width:420px; max-height:260px; object-fit:cover;
+    border-radius:10px; border:1px solid var(--border); }
+  .rl-pager { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:12px; }
+  .rl-pager .dr-btn { min-height:44px; min-width:84px; }
   .rl-page-info { font-family:var(--font-mono); font-size:11px; color:var(--dim); text-align:center; }
   .rl-empty { text-align:center; color:var(--dim); padding:34px 16px; font-family:var(--font-mono); font-size:11px;
-    background:var(--surface); border:1px solid var(--border); border-radius:10px; line-height:1.7; }
+    background:var(--surface); border:1px solid var(--border); border-radius:12px; line-height:1.7; }
 
   @media (min-width:700px) {
     .rl-toggle { display:none; }
     .rl-filters { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); align-items:end; }
-    .rl-row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px; }
-    .rl-cell { flex-direction:column; align-items:flex-start; text-align:left; gap:3px; }
-    .rl-dgrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .rl-field.span2 { grid-column:auto; }
+    .rl-row { padding:14px 16px 14px 12px; }
+    .rl-detail { padding-left:54px; }
+    .rl-failnote { padding-left:54px; }
+    .rl-dgrid { grid-template-columns:repeat(3,minmax(0,1fr)); }
   }
   @media (min-width:1100px) {
-    .rl-headrow { display:grid; grid-template-columns:var(--rl-cols); gap:12px; padding:0 14px 8px 17px;
+    .rl-headrow { display:grid; grid-template-columns:var(--rl-cols); gap:12px; padding:0 16px 8px 15px;
       font-family:var(--font-mono); font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
-    .rl-row { grid-template-columns:var(--rl-cols); align-items:center; gap:12px; }
-    .rl-cell::before { display:none; }
+    .rl-row { grid-template-columns:var(--rl-cols); grid-template-areas:none; column-gap:12px; row-gap:0;
+      min-height:52px; padding:10px 16px 10px 12px; }
+    .rl-row > * { grid-area:auto; justify-self:start; font-size:12px; font-weight:400; }
+    .rl-row > .rl-det { font-size:13px; font-weight:600; }
+    .rl-loc::before, .rl-dtm::before, .rl-ts::before { display:none; }
     .rl-dgrid { grid-template-columns:repeat(4,minmax(0,1fr)); }
   }
 
@@ -666,23 +685,25 @@ const css = `
     .an-grid    { grid-template-columns:1fr; }
   }
 
-  /* RESPONSIVE SHELL — lets the Device Reports list fit phones (sidebar becomes a top strip).
-     Delete this block to restore the original fixed sidebar on small screens. */
+  /* RESPONSIVE SHELL — compact Android-friendly layout so the Device Reports list fits phones
+     (sidebar becomes a slim top strip). Delete this block to restore the original fixed sidebar. */
   @media (max-width:768px) {
+    .app { height:100vh; height:100dvh; }
     .main { min-height:0; }
-    .content { padding:12px; }
+    .content { padding:10px; }
     .body { flex-direction:column; }
-    .sidebar { width:100%; min-width:0; flex-direction:row; align-items:center; padding:6px 8px;
-      border-right:none; border-bottom:1px solid var(--border); overflow-x:auto; overflow-y:hidden; }
-    .sb-section { display:flex; align-items:center; gap:4px; padding:0; margin:0; }
-    .sb-label, .sb-divider, .rpi-panel, .det-panel, .sb-footer { display:none; }
-    .sb-item { white-space:nowrap; min-height:44px; margin:0; }
-    .sb-item.active { box-shadow:inset 0 -3px 0 var(--accent); }
-    .admin-zone { display:flex; margin:0 0 0 4px; padding:2px; }
-    .navbar { padding:0 10px; }
-    .nav-brand { margin-right:8px; letter-spacing:2px; }
+    .navbar { height:48px; padding:0 10px; }
+    .nav-brand { margin-right:8px; letter-spacing:2px; font-size:13px; }
     .nav-right { gap:4px; min-width:0; }
     .nav-time, .nav-user { display:none; }
+    .theme-toggle { padding:6px 10px; }
+    .sidebar { width:100%; min-width:0; flex-direction:row; align-items:center; padding:4px 6px;
+      border-right:none; border-bottom:1px solid var(--border); overflow-x:auto; overflow-y:hidden; flex-shrink:0; }
+    .sb-section { display:flex; align-items:center; gap:2px; padding:0; margin:0; }
+    .sb-label, .sb-divider, .rpi-panel, .det-panel, .sb-footer { display:none; }
+    .sb-item { white-space:nowrap; min-height:40px; margin:0; padding:0 12px; font-size:13px; }
+    .sb-item.active { box-shadow:inset 0 -3px 0 var(--accent); }
+    .admin-zone { display:flex; margin:0 0 0 4px; padding:2px; }
   }
 `;
 
@@ -1087,7 +1108,7 @@ function DeviceReportsPage() {
       <div className="rl-top">
         <span className="rl-title">Device Reports<b>{filtered.length}</b></span>
         <div className="rl-actions">
-          <button className="dr-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate now (test)"}</button>
+          <button className="dr-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate (test)"}</button>
           <button className="dr-btn" onClick={() => window.print()}>Print</button>
         </div>
       </div>
@@ -1100,7 +1121,7 @@ function DeviceReportsPage() {
       </div>
 
       <div className={`rl-filters ${filtersOpen ? "open" : ""}`}>
-        <div className="rl-field">
+        <div className="rl-field span2">
           <label className="rl-lbl" htmlFor="rl-device">Device</label>
           <select id="rl-device" className="rl-select" value={deviceF} onChange={(e) => setDeviceF(e.target.value)}>
             <option value="all">All devices</option>
@@ -1132,13 +1153,13 @@ function DeviceReportsPage() {
           <label className="rl-lbl" htmlFor="rl-to">To date</label>
           <input id="rl-to" className="rl-input" type="date" value={toD} min={fromD || undefined} onChange={(e) => setToD(e.target.value)} />
         </div>
-        <div className="rl-field">
+        <div className="rl-field span2">
           <button className="dr-btn" onClick={clearFilters}>Clear filters</button>
         </div>
       </div>
 
       <div className="rl-summary">
-        Showing {visible.length} of {filtered.length} entries
+        Showing {visible.length} of {filtered.length} entries · tap an entry for details
         {failCount > 0 && <> · <span className="bad">{failCount} unsuccessful</span></>}
       </div>
 
@@ -1151,7 +1172,7 @@ function DeviceReportsPage() {
       ) : (
         <>
           <div className="rl-headrow" aria-hidden="true">
-            <span>Device ID</span><span>Location</span><span>Status</span><span>Detection Time</span><span>Deterrent Used</span><span>Result</span><span>Timestamp</span>
+            <span /><span>Device ID</span><span>Location</span><span>Status</span><span>Detection Time</span><span>Deterrent Used</span><span>Result</span><span>Timestamp</span>
           </div>
           <ul className="rl-list">
             {visible.map((r) => {
@@ -1183,15 +1204,14 @@ function DeviceReportsPage() {
                     onClick={() => toggleRow(r.id)}
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleRow(r.id); } }}
                   >
-                    <div className="rl-cell" data-label="Device ID">
-                      <span><span className="rl-caret">{open ? "▾" : "▸"}</span><span className="rl-mono">{r.deviceId}</span><span className="rl-sub">Account: {r.account || "Unlinked"}</span></span>
-                    </div>
-                    <div className="rl-cell" data-label="Location"><span>Not set</span></div>
-                    <div className="rl-cell" data-label="Status"><span className={`rl-badge ${online ? "online" : "offline"}`}>● {online ? "Online" : "Offline"}</span></div>
-                    <div className="rl-cell" data-label="Detection Time"><span className="rl-mono">{r.detected ? fmtT(r.ts) : "—"}</span></div>
-                    <div className="rl-cell" data-label="Deterrent Used"><span>{r.deterrent || "—"}</span></div>
-                    <div className="rl-cell" data-label="Result"><span className={`rl-badge ${meta.cls}`}>{meta.icon} {meta.label}</span></div>
-                    <div className="rl-cell" data-label="Timestamp"><span className="rl-mono">{fmtFull(r.ts)}</span></div>
+                    <span className={`rl-ic ${meta.cls}`}>{meta.icon}</span>
+                    <span className="rl-c rl-dev">{r.deviceId} · {r.account || "Unlinked"}</span>
+                    <span className="rl-c rl-loc" data-label="Location">Not set</span>
+                    <span className={`rl-c rl-sta ${online ? "online" : "offline"}`}>● {online ? "Online" : "Offline"}</span>
+                    <span className="rl-c rl-dtm" data-label="Detected">{r.detected ? fmtT(r.ts) : "—"}</span>
+                    <span className="rl-c rl-det">{r.deterrent || "No deterrent"}</span>
+                    <span className={`rl-c rl-res rl-badge ${meta.cls}`}>{meta.label}</span>
+                    <span className="rl-c rl-ts" data-label="Time">{fmtFull(r.ts)}</span>
                   </div>
                   {r.result === "fail" && <div className="rl-failnote">✕ Deterrent attempt unsuccessful · {fmtFull(r.ts)}</div>}
                   {open && (
