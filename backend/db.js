@@ -1,132 +1,95 @@
-const path = require("path");
-const fs = require("fs");
-const Database = require("better-sqlite3");
+const crypto = require("crypto");
+const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 
-// DATA_DIR lets you point the database at a mounted persistent volume in
-// production (e.g. Railway's /data volume) so it survives redeploys.
-// Defaults to this folder for local development.
-const DATA_DIR = process.env.DATA_DIR || __dirname;
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-const db = new Database(path.join(DATA_DIR, "ratavert.db"));
-db.pragma("journal_mode = WAL");
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS accounts (
-    username    TEXT PRIMARY KEY,
-    password_hash TEXT NOT NULL,
-    role        TEXT NOT NULL DEFAULT 'user',
-    active      INTEGER NOT NULL DEFAULT 1,
-    created_at  TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS device (
-    id            INTEGER PRIMARY KEY CHECK (id = 1),
-    ip            TEXT,
-    owner         TEXT,
-    online        INTEGER NOT NULL DEFAULT 0,
-    armed_lights  INTEGER NOT NULL DEFAULT 1,
-    armed_audio   INTEGER NOT NULL DEFAULT 1,
-    armed_pepper  INTEGER NOT NULL DEFAULT 1,
-    armed_last    INTEGER NOT NULL DEFAULT 1,
-    last_seen     TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS settings (
-    id                  INTEGER PRIMARY KEY CHECK (id = 1),
-    detecting           INTEGER NOT NULL DEFAULT 1,
-    detection_interval  INTEGER NOT NULL DEFAULT 20
-  );
-
-  CREATE TABLE IF NOT EXISTS detections (
-    id          TEXT PRIMARY KEY,
-    timestamp   TEXT NOT NULL,
-    confidence  REAL,
-    photo_path  TEXT,
-    actions_fired TEXT NOT NULL DEFAULT '[]',
-    escalated   INTEGER NOT NULL DEFAULT 0,
-    created_at  TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS trigger_events (
-    id            TEXT PRIMARY KEY,
-    type          TEXT NOT NULL,
-    status        TEXT NOT NULL DEFAULT 'pending',
-    source        TEXT NOT NULL,          -- 'auto' | 'manual'
-    is_rat        INTEGER NOT NULL DEFAULT 0,
-    is_last       INTEGER NOT NULL DEFAULT 0,
-    detail        TEXT,
-    requested_by  TEXT,
-    detection_id  TEXT,
-    confidence    REAL,
-    fired_at      TEXT,
-    created_at    TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS commands (
-    id          TEXT PRIMARY KEY,
-    type        TEXT NOT NULL,
-    duration    INTEGER NOT NULL DEFAULT 2,
-    status      TEXT NOT NULL DEFAULT 'pending',  -- pending | delivered | done
-    trigger_event_id TEXT,
-    created_at  TEXT NOT NULL
-  );
-
-  -- Stored, point-in-time snapshots — NOT computed live. Generated once,
-  -- automatically, every Sunday at 00:00, then frozen. This is the "weekly
-  -- report the user's IoT device sends to the admin," distinct from that
-  -- user's own always-live Activity page.
-  CREATE TABLE IF NOT EXISTS weekly_reports (
-    id                  TEXT PRIMARY KEY,
-    device_owner        TEXT,               -- username this device is bound to
-    device_ip           TEXT,
-    period_since        TEXT NOT NULL,
-    period_until        TEXT NOT NULL,
-    generated_at        TEXT NOT NULL,
-    detections_total    INTEGER NOT NULL DEFAULT 0,
-    detections_escalated INTEGER NOT NULL DEFAULT 0,
-    deterrence_json     TEXT NOT NULL DEFAULT '{}',
-    entries_json        TEXT NOT NULL DEFAULT '[]'
-  );
-`);
-
-// Migration: add columns used by manual (browser-webcam) test captures,
-// which share the detections table with real Pi detections but are tagged
-// distinctly so they never count toward rat-detection analytics.
-const detectionCols = db.prepare("PRAGMA table_info(detections)").all().map((c) => c.name);
-if (!detectionCols.includes("source")) {
-  db.exec("ALTER TABLE detections ADD COLUMN source TEXT NOT NULL DEFAULT 'device'");
+// DATABASE_URL is the Supabase *Session pooler* connection string (port 5432).
+// Supabase uses its own certificate authority, so we turn TLS on without
+// checking the certificate chain. Set DATABASE_SSL=false only for a local
+// Postgres that has no TLS.
+let connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error("Missing DATABASE_URL. Copy .env.example to .env and fill it in.");
+  process.exit(1);
 }
-if (!detectionCols.includes("captured_by")) {
-  db.exec("ALTER TABLE detections ADD COLUMN captured_by TEXT");
+// An "sslmode=" in the URL would override the ssl setting below, so drop it.
+connectionString = connectionString
+  .replace(/([?&])sslmode=[^&]*&?/i, "$1")
+  .replace(/[?&]$/, "");
+
+const useSsl = !/^(false|0|off|disable)$/i.test(process.env.DATABASE_SSL || "");
+
+const pool = new Pool({
+  connectionString,
+  ssl: useSsl ? { rejectUnauthorized: false } : false,
+  max: Number(process.env.DB_POOL_MAX) || 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 15000,
+  keepAlive: true,
+});
+
+// A dropped idle connection (for example after Render wakes up) must not crash the server.
+pool.on("error", (err) => console.error("[db] idle connection error:", err.message));
+
+const query = (text, params) => pool.query(text, params);
+const many = async (text, params) => (await pool.query(text, params)).rows;
+const one = async (text, params) => (await pool.query(text, params)).rows[0] || null;
+
+// Run several statements as one all-or-nothing unit.
+async function tx(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await fn(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      /* the original error is the one that matters */
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
-// Seed singleton rows
-const deviceRow = db.prepare("SELECT * FROM device WHERE id = 1").get();
-if (!deviceRow) {
-  db.prepare(
-    `INSERT INTO device (id, ip, owner, online, armed_lights, armed_audio, armed_pepper, armed_last, last_seen)
-     VALUES (1, NULL, NULL, 0, 1, 1, 1, 1, NULL)`
-  ).run();
-}
-const settingsRow = db.prepare("SELECT * FROM settings WHERE id = 1").get();
-if (!settingsRow) {
-  db.prepare(
-    `INSERT INTO settings (id, detecting, detection_interval) VALUES (1, 1, 20)`
-  ).run();
+// Called once at startup, before the server accepts requests.
+async function init() {
+  try {
+    await pool.query("INSERT INTO device (id) VALUES (1) ON CONFLICT (id) DO NOTHING");
+    await pool.query("INSERT INTO settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING");
+
+    // Seed a first admin account only if the accounts table is completely empty.
+    const { c } = await one("SELECT COUNT(*)::int AS c FROM accounts");
+    if (c === 0) {
+      const username = (process.env.SEED_ADMIN_USERNAME || "admin").toLowerCase();
+      let password = process.env.SEED_ADMIN_PASSWORD;
+      let generated = false;
+      if (!password) {
+        // Never fall back to a well-known default password.
+        password = crypto.randomBytes(12).toString("hex");
+        generated = true;
+      }
+      const hash = await bcrypt.hash(password, 10);
+      await pool.query(
+        `INSERT INTO accounts (username, password_hash, role, active, created_at)
+         VALUES ($1, $2, 'admin', true, $3) ON CONFLICT (username) DO NOTHING`,
+        [username, hash, new Date().toISOString()]
+      );
+      console.log(`[seed] Created initial admin account "${username}". Change its password after first login.`);
+      if (generated) {
+        console.log(`[seed] SEED_ADMIN_PASSWORD was not set, so a one-time password was generated: ${password}`);
+      }
+    }
+  } catch (err) {
+    if (err && err.code === "42P01") {
+      throw new Error(
+        'The database tables do not exist yet. Run supabase/schema.sql in the Supabase SQL Editor first.'
+      );
+    }
+    throw err;
+  }
 }
 
-// Seed a first admin account only if the accounts table is completely empty
-const accountCount = db.prepare("SELECT COUNT(*) AS c FROM accounts").get().c;
-if (accountCount === 0) {
-  const username = (process.env.SEED_ADMIN_USERNAME || "admin").toLowerCase();
-  const password = process.env.SEED_ADMIN_PASSWORD || "change_me_immediately";
-  const hash = bcrypt.hashSync(password, 10);
-  db.prepare(
-    `INSERT INTO accounts (username, password_hash, role, active, created_at) VALUES (?,?,?,1,?)`
-  ).run(username, hash, "admin", new Date().toISOString());
-  console.log(`[seed] Created initial admin account "${username}". Change its password after first login.`);
-}
-
-module.exports = db;
+module.exports = { pool, query, many, one, tx, init };
