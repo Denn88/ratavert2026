@@ -1,15 +1,22 @@
 require("dotenv").config();
-const fs = require("fs");
+
+const REQUIRED_ENV = ["JWT_SECRET", "DEVICE_KEY", "DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"];
+const missingEnv = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (missingEnv.length) {
+  console.error(`Missing environment variables: ${missingEnv.join(", ")}. Copy .env.example to .env and fill it in.`);
+  process.exit(1);
+}
+
 const path = require("path");
 const http = require("http");
-const crypto = require("crypto");
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
-const { v4: uuid } = require("uuid");
+const uuid = () => require("crypto").randomUUID();
 const { WebSocketServer } = require("ws");
+const { createClient } = require("@supabase/supabase-js");
 const db = require("./db");
 
 const PORT = process.env.PORT || 4000;
@@ -17,42 +24,67 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const DEVICE_KEY = process.env.DEVICE_KEY;
 const TRIGGER_COOLDOWN_MS = (Number(process.env.TRIGGER_COOLDOWN_SECONDS) || 10) * 1000;
 const OFFLINE_AFTER_MS = (Number(process.env.DEVICE_OFFLINE_AFTER_SECONDS) || 20) * 1000;
-const PHOTOS_DIR = process.env.DATA_DIR ? path.join(process.env.DATA_DIR, "photos") : path.join(__dirname, "photos");
+const PHOTO_BUCKET = process.env.SUPABASE_BUCKET || "photos";
 
-if (!JWT_SECRET || !DEVICE_KEY) {
-  console.error("Missing JWT_SECRET or DEVICE_KEY. Copy .env.example to .env and fill it in.");
-  process.exit(1);
+process.on("unhandledRejection", (reason) => console.error("[unhandledRejection]", reason));
+
+// Photos live in a private Supabase Storage bucket. Only this server (using the
+// secret key) can read or write it.
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+});
+const photoBucket = () => supabase.storage.from(PHOTO_BUCKET);
+
+// ── small helpers ───────────────────────────────────────────────────────────
+// Any date-like value -> millisecond-precision ISO string, or null if it is not a real date.
+function toIso(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
-if (!fs.existsSync(PHOTOS_DIR)) fs.mkdirSync(PHOTOS_DIR, { recursive: true });
+function toNumberOrNull(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+function parseLimit(value, fallback, max) {
+  const n = Math.floor(Number(value));
+  return Math.min(Number.isFinite(n) && n > 0 ? n : fallback, max);
+}
+// Express 4 does not catch errors from async handlers, so every async route goes through this.
+const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 const app = express();
-app.set("trust proxy", 1); // required behind Railway/Render's reverse proxy for correct req.protocol/req.ip
-app.use(cors({ origin: (process.env.CORS_ORIGIN || "*").split(",") }));
+app.set("trust proxy", 1); // required behind Render's reverse proxy for correct req.protocol/req.ip
+const corsOrigins = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((s) => s.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+app.use(cors({ origin: corsOrigins.length === 0 || corsOrigins.includes("*") ? true : corsOrigins }));
 app.use(express.json({ limit: "2mb" }));
 
+// Photos are held in memory just long enough to hand them to Supabase Storage.
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: PHOTOS_DIR,
-    filename: (req, file, cb) => cb(null, `${uuid()}.jpg`),
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
 });
 
 // ── auth middleware ─────────────────────────────────────────────────────────
-function requireUser(req, res, next) {
+const requireUser = wrap(async (req, res, next) => {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: "Missing token" });
+  let payload;
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    const acc = db.prepare("SELECT * FROM accounts WHERE username = ?").get(payload.username);
-    if (!acc || !acc.active) return res.status(401).json({ error: "Account not found or deactivated" });
-    req.user = { username: acc.username, role: acc.role };
-    next();
+    payload = jwt.verify(token, JWT_SECRET);
   } catch {
     return res.status(401).json({ error: "Invalid or expired token" });
   }
-}
+  const acc = await db.one("SELECT username, role, active FROM accounts WHERE username = $1", [payload.username]);
+  if (!acc || !acc.active) return res.status(401).json({ error: "Account not found or deactivated" });
+  req.user = { username: acc.username, role: acc.role };
+  next();
+});
 function requireAdmin(req, res, next) {
   if (req.user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
   next();
@@ -92,19 +124,8 @@ setInterval(() => {
   });
 }, 15000);
 
-// mark device offline if heartbeat has gone silent
-setInterval(() => {
-  const d = db.prepare("SELECT * FROM device WHERE id = 1").get();
-  if (d && d.online && d.last_seen) {
-    if (Date.now() - new Date(d.last_seen).getTime() > OFFLINE_AFTER_MS) {
-      db.prepare("UPDATE device SET online = 0 WHERE id = 1").run();
-      broadcast("status", deviceStatusPayload());
-    }
-  }
-}, 5000);
-
-function deviceStatusPayload() {
-  const d = db.prepare("SELECT * FROM device WHERE id = 1").get();
+async function deviceStatusPayload() {
+  const d = (await db.one("SELECT * FROM device WHERE id = 1")) || {};
   return {
     online: !!d.online,
     ip: d.ip,
@@ -118,8 +139,8 @@ function deviceStatusPayload() {
     last_seen: d.last_seen,
   };
 }
-function settingsPayload() {
-  const s = db.prepare("SELECT * FROM settings WHERE id = 1").get();
+async function settingsPayload() {
+  const s = (await db.one("SELECT * FROM settings WHERE id = 1")) || {};
   return { detecting: !!s.detecting, detectionInterval: s.detection_interval };
 }
 
@@ -154,21 +175,25 @@ function detectionToLogEntry(d) {
     confidence: d.confidence,
   };
 }
+// Trigger rows are always read with this query so each one carries the photo
+// of the detection that caused it (det_photo_path) without a second lookup.
+const TRIGGER_SELECT = `SELECT t.*, d.photo_path AS det_photo_path
+  FROM trigger_events t LEFT JOIN detections d ON d.id = t.detection_id`;
+
 function triggerToLogEntry(t) {
+  const when = t.fired_at || t.created_at;
   return {
     id: `trg-${t.id}`,
-    ts: t.fired_at || t.created_at,
-    tsStr: fmtT(t.fired_at || t.created_at),
-    dateStr: fmtD(t.fired_at || t.created_at),
+    ts: when,
+    tsStr: fmtT(when),
+    dateStr: fmtD(when),
     type: t.type,
     user: t.requested_by || (t.source === "auto" ? "auto-detect" : "unknown"),
     status: t.status === "ok" ? "ok" : t.status === "fail" ? "fail" : "pending",
     detail: t.detail || (t.source === "auto" ? "Auto-response: rat detected" : "Manual test"),
     isRat: false,
     isLast: !!t.is_last,
-    photoId: t.detection_id
-      ? photoUrlFor((db.prepare("SELECT photo_path FROM detections WHERE id = ?").get(t.detection_id) || {}).photo_path)
-      : null,
+    photoId: photoUrlFor(t.det_photo_path),
     confidence: t.confidence,
   };
 }
@@ -177,20 +202,17 @@ function triggerToLogEntry(t) {
 // table, covering the 7 days up to "now". This is what backs the admin's
 // Device Reports (Weekly tab) — a frozen record, not a live query, so past
 // weeks stay stable even as new detections/triggers keep coming in.
-function generateWeeklyReport() {
+async function generateWeeklyReport() {
   const now = new Date();
-  const since = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
-  const sinceIso = since.toISOString();
+  const sinceIso = new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString();
   const nowIso = now.toISOString();
 
-  const device = db.prepare("SELECT * FROM device WHERE id = 1").get() || {};
-
-  const detRows = db
-    .prepare("SELECT * FROM detections WHERE timestamp >= ? AND source != 'manual' ORDER BY timestamp DESC")
-    .all(sinceIso);
-  const trgRows = db
-    .prepare("SELECT * FROM trigger_events WHERE created_at >= ? ORDER BY created_at DESC")
-    .all(sinceIso);
+  const device = (await db.one("SELECT * FROM device WHERE id = 1")) || {};
+  const detRows = await db.many(
+    `SELECT * FROM detections WHERE "timestamp" >= $1 AND source != 'manual' ORDER BY "timestamp" DESC`,
+    [sinceIso]
+  );
+  const trgRows = await db.many(`${TRIGGER_SELECT} WHERE t.created_at >= $1 ORDER BY t.created_at DESC`, [sinceIso]);
 
   const entries = [...detRows.map(detectionToLogEntry), ...trgRows.map(triggerToLogEntry)].sort(
     (a, b) => new Date(b.ts) - new Date(a.ts)
@@ -207,171 +229,209 @@ function generateWeeklyReport() {
   });
 
   const id = uuid();
-  db.prepare(
+  await db.query(
     `INSERT INTO weekly_reports
-       (id, device_owner, device_ip, period_since, period_until, generated_at, detections_total, detections_escalated, deterrence_json, entries_json)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`
-  ).run(
-    id,
-    device.owner || null,
-    device.ip || null,
-    sinceIso,
-    nowIso,
-    nowIso,
-    detections_total,
-    detections_escalated,
-    JSON.stringify(deterrence),
-    JSON.stringify(entries)
+       (id, device_owner, device_ip, period_since, period_until, generated_at,
+        detections_total, detections_escalated, deterrence_json, entries_json)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb)`,
+    [
+      id,
+      device.owner || null,
+      device.ip || null,
+      sinceIso,
+      nowIso,
+      nowIso,
+      detections_total,
+      detections_escalated,
+      JSON.stringify(deterrence),
+      JSON.stringify(entries),
+    ]
   );
-
   return id;
 }
 
-// Auto-generate a snapshot every Sunday at 00:00, once per day at most.
-let lastAutoGenDate = null;
-setInterval(() => {
-  const now = new Date();
-  if (now.getDay() === 0 && now.getHours() === 0) {
-    const today = now.toDateString();
-    if (lastAutoGenDate !== today) {
-      generateWeeklyReport();
-      lastAutoGenDate = today;
-    }
-  }
-}, 60000);
-
 // ══════════════════════════════════════ AUTH ══════════════════════════════════
-app.post("/api/auth/login", (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password) return res.status(400).json({ error: "Username and password required" });
-  const acc = db.prepare("SELECT * FROM accounts WHERE username = ?").get(String(username).toLowerCase());
-  if (!acc) return res.status(401).json({ error: "Invalid credentials" });
-  if (!acc.active) return res.status(403).json({ error: "This account has been deactivated. Contact an administrator." });
-  if (!bcrypt.compareSync(password, acc.password_hash)) return res.status(401).json({ error: "Invalid credentials" });
-  const token = jwt.sign({ username: acc.username, role: acc.role }, JWT_SECRET, { expiresIn: "12h" });
-  res.json({ token, user: { username: acc.username, role: acc.role } });
-});
+app.post(
+  "/api/auth/login",
+  wrap(async (req, res) => {
+    const { username, password } = req.body || {};
+    if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+    const acc = await db.one("SELECT * FROM accounts WHERE username = $1", [String(username).toLowerCase()]);
+    if (!acc) return res.status(401).json({ error: "Invalid credentials" });
+    if (!acc.active) return res.status(403).json({ error: "This account has been deactivated. Contact an administrator." });
+    if (!(await bcrypt.compare(String(password), acc.password_hash))) return res.status(401).json({ error: "Invalid credentials" });
+    const token = jwt.sign({ username: acc.username, role: acc.role }, JWT_SECRET, { expiresIn: "12h" });
+    res.json({ token, user: { username: acc.username, role: acc.role } });
+  })
+);
 
 app.get("/api/me", requireUser, (req, res) => res.json({ user: req.user }));
 
-app.post("/api/auth/change-password", requireUser, (req, res) => {
-  const { currentPassword, newPassword } = req.body || {};
-  if (!currentPassword || !newPassword) return res.status(400).json({ error: "Current and new password are required" });
-  if (newPassword.length < 6) return res.status(400).json({ error: "New password must be at least 6 characters" });
-  const acc = db.prepare("SELECT * FROM accounts WHERE username = ?").get(req.user.username);
-  if (!bcrypt.compareSync(currentPassword, acc.password_hash)) return res.status(401).json({ error: "Current password is incorrect" });
-  db.prepare("UPDATE accounts SET password_hash = ? WHERE username = ?").run(bcrypt.hashSync(newPassword, 10), req.user.username);
-  res.json({ ok: true });
-});
-
-app.post("/api/me/password", requireUser, (req, res) => {
+const changePassword = wrap(async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
   if (!currentPassword || !newPassword) return res.status(400).json({ error: "Current and new password are required" });
   if (String(newPassword).length < 6) return res.status(400).json({ error: "New password must be at least 6 characters" });
-  const acc = db.prepare("SELECT * FROM accounts WHERE username = ?").get(req.user.username);
-  if (!bcrypt.compareSync(currentPassword, acc.password_hash)) return res.status(401).json({ error: "Current password is incorrect" });
-  db.prepare("UPDATE accounts SET password_hash = ? WHERE username = ?").run(bcrypt.hashSync(newPassword, 10), req.user.username);
+  const acc = await db.one("SELECT password_hash FROM accounts WHERE username = $1", [req.user.username]);
+  if (!acc || !(await bcrypt.compare(String(currentPassword), acc.password_hash))) {
+    return res.status(401).json({ error: "Current password is incorrect" });
+  }
+  const hash = await bcrypt.hash(String(newPassword), 10);
+  await db.query("UPDATE accounts SET password_hash = $1 WHERE username = $2", [hash, req.user.username]);
   res.json({ ok: true });
 });
+// The dashboard may call either path; both do the same thing.
+app.post("/api/auth/change-password", requireUser, changePassword);
+app.post("/api/me/password", requireUser, changePassword);
 
 // ══════════════════════════════════════ ACCOUNTS (admin) ═════════════════════
-app.get("/api/accounts", requireUser, requireAdmin, (req, res) => {
-  const rows = db.prepare("SELECT username, role, active, created_at FROM accounts").all();
-  const withStats = rows.map((a) => {
-    const fired = db
-      .prepare("SELECT COUNT(*) AS c FROM trigger_events WHERE requested_by = ? AND source = 'manual'")
-      .get(a.username).c;
-    const last = db
-      .prepare("SELECT created_at FROM trigger_events WHERE requested_by = ? ORDER BY created_at DESC LIMIT 1")
-      .get(a.username);
-    return {
-      username: a.username,
-      role: a.role,
-      active: !!a.active,
-      createdAt: a.created_at,
-      triggersFired: fired,
-      lastActivity: last ? last.created_at : null,
-    };
-  });
-  res.json(withStats);
-});
+app.get(
+  "/api/accounts",
+  requireUser,
+  requireAdmin,
+  wrap(async (req, res) => {
+    const rows = await db.many(
+      `SELECT a.username, a.role, a.active, a.created_at,
+              (SELECT COUNT(*)::int FROM trigger_events t
+                WHERE t.requested_by = a.username AND t.source = 'manual') AS triggers_fired,
+              (SELECT MAX(t.created_at) FROM trigger_events t
+                WHERE t.requested_by = a.username) AS last_activity
+         FROM accounts a
+        ORDER BY a.created_at ASC, a.username ASC`
+    );
+    res.json(
+      rows.map((a) => ({
+        username: a.username,
+        role: a.role,
+        active: !!a.active,
+        createdAt: a.created_at,
+        triggersFired: a.triggers_fired,
+        lastActivity: a.last_activity || null,
+      }))
+    );
+  })
+);
 
-app.post("/api/accounts", requireUser, requireAdmin, (req, res) => {
-  const { username, password, role } = req.body || {};
-  if (!username || !password) return res.status(400).json({ error: "Username and password required" });
-  const u = String(username).toLowerCase().trim();
-  const r = role === "admin" ? "admin" : "user";
-  const existing = db.prepare("SELECT username FROM accounts WHERE username = ?").get(u);
-  if (existing) return res.status(409).json({ error: "That username already exists" });
-  const hash = bcrypt.hashSync(password, 10);
-  db.prepare("INSERT INTO accounts (username, password_hash, role, active, created_at) VALUES (?,?,?,1,?)").run(
-    u,
-    hash,
-    r,
-    new Date().toISOString()
-  );
-  broadcast("accounts_changed", {});
-  res.status(201).json({ username: u, role: r, active: true });
-});
+app.post(
+  "/api/accounts",
+  requireUser,
+  requireAdmin,
+  wrap(async (req, res) => {
+    const { username, password, role } = req.body || {};
+    if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+    const u = String(username).toLowerCase().trim();
+    if (!u) return res.status(400).json({ error: "Username and password required" });
+    const r = role === "admin" ? "admin" : "user";
+    const hash = await bcrypt.hash(String(password), 10);
+    const inserted = await db.one(
+      `INSERT INTO accounts (username, password_hash, role, active, created_at)
+       VALUES ($1,$2,$3,true,$4) ON CONFLICT (username) DO NOTHING RETURNING username`,
+      [u, hash, r, new Date().toISOString()]
+    );
+    if (!inserted) return res.status(409).json({ error: "That username already exists" });
+    broadcast("accounts_changed", {});
+    res.status(201).json({ username: u, role: r, active: true });
+  })
+);
 
-app.patch("/api/accounts/:username", requireUser, requireAdmin, (req, res) => {
-  const u = req.params.username.toLowerCase();
-  const acc = db.prepare("SELECT * FROM accounts WHERE username = ?").get(u);
-  if (!acc) return res.status(404).json({ error: "Account not found" });
-  if (u === req.user.username) return res.status(400).json({ error: "You can't change your own role or status" });
-  const { role, active, password } = req.body || {};
-  if (role) db.prepare("UPDATE accounts SET role = ? WHERE username = ?").run(role === "admin" ? "admin" : "user", u);
-  if (typeof active === "boolean") db.prepare("UPDATE accounts SET active = ? WHERE username = ?").run(active ? 1 : 0, u);
-  if (password) db.prepare("UPDATE accounts SET password_hash = ? WHERE username = ?").run(bcrypt.hashSync(password, 10), u);
-  broadcast("accounts_changed", {});
-  res.json({ ok: true });
-});
+app.patch(
+  "/api/accounts/:username",
+  requireUser,
+  requireAdmin,
+  wrap(async (req, res) => {
+    const u = req.params.username.toLowerCase();
+    const acc = await db.one("SELECT username FROM accounts WHERE username = $1", [u]);
+    if (!acc) return res.status(404).json({ error: "Account not found" });
+    if (u === req.user.username) return res.status(400).json({ error: "You can't change your own role or status" });
+    const { role, active, password } = req.body || {};
+    const sets = [];
+    const vals = [];
+    if (role) {
+      vals.push(role === "admin" ? "admin" : "user");
+      sets.push(`role = $${vals.length}`);
+    }
+    if (typeof active === "boolean") {
+      vals.push(active);
+      sets.push(`active = $${vals.length}`);
+    }
+    if (password) {
+      vals.push(await bcrypt.hash(String(password), 10));
+      sets.push(`password_hash = $${vals.length}`);
+    }
+    if (sets.length) {
+      vals.push(u);
+      await db.query(`UPDATE accounts SET ${sets.join(", ")} WHERE username = $${vals.length}`, vals);
+    }
+    broadcast("accounts_changed", {});
+    res.json({ ok: true });
+  })
+);
 
 // ══════════════════════════════════════ STATUS / SETTINGS ═══════════════════
-app.get("/api/status", requireUser, (req, res) => res.json(deviceStatusPayload()));
+app.get("/api/status", requireUser, wrap(async (req, res) => res.json(await deviceStatusPayload())));
 
-app.get("/api/settings", requireUser, (req, res) => res.json(settingsPayload()));
+app.get("/api/settings", requireUser, wrap(async (req, res) => res.json(await settingsPayload())));
 
-app.post("/api/settings", requireUser, (req, res) => {
-  const { detecting, detectionInterval, armed } = req.body || {};
-  if (typeof detecting === "boolean") db.prepare("UPDATE settings SET detecting = ? WHERE id = 1").run(detecting ? 1 : 0);
-  if (Number.isFinite(detectionInterval)) db.prepare("UPDATE settings SET detection_interval = ? WHERE id = 1").run(detectionInterval);
-  if (armed && typeof armed === "object") {
-    const d = db.prepare("SELECT * FROM device WHERE id = 1").get();
-    db.prepare(
-      "UPDATE device SET armed_lights=?, armed_audio=?, armed_pepper=?, armed_last=? WHERE id = 1"
-    ).run(
-      armed.lights !== undefined ? (armed.lights ? 1 : 0) : d.armed_lights,
-      armed.audio !== undefined ? (armed.audio ? 1 : 0) : d.armed_audio,
-      armed.pepper !== undefined ? (armed.pepper ? 1 : 0) : d.armed_pepper,
-      armed.last !== undefined ? (armed.last ? 1 : 0) : d.armed_last
-    );
-    broadcast("status", deviceStatusPayload());
-  }
-  broadcast("settings", settingsPayload());
-  res.json({ settings: settingsPayload(), status: deviceStatusPayload() });
-});
+app.post(
+  "/api/settings",
+  requireUser,
+  wrap(async (req, res) => {
+    const { detecting, detectionInterval, armed } = req.body || {};
+    if (typeof detecting === "boolean") await db.query("UPDATE settings SET detecting = $1 WHERE id = 1", [detecting]);
+    if (Number.isFinite(detectionInterval)) {
+      await db.query("UPDATE settings SET detection_interval = $1 WHERE id = 1", [Math.round(detectionInterval)]);
+    }
+    if (armed && typeof armed === "object") {
+      const flag = (v) => (v === undefined ? null : !!v);
+      await db.query(
+        `UPDATE device SET
+           armed_lights = COALESCE($1::boolean, armed_lights),
+           armed_audio  = COALESCE($2::boolean, armed_audio),
+           armed_pepper = COALESCE($3::boolean, armed_pepper),
+           armed_last   = COALESCE($4::boolean, armed_last)
+         WHERE id = 1`,
+        [flag(armed.lights), flag(armed.audio), flag(armed.pepper), flag(armed.last)]
+      );
+    }
+    const status = await deviceStatusPayload();
+    const settings = await settingsPayload();
+    if (armed && typeof armed === "object") broadcast("status", status);
+    broadcast("settings", settings);
+    res.json({ settings, status });
+  })
+);
 
 // ══════════════════════════════════════ DEVICE PAIRING ═══════════════════════
-app.post("/api/device/connect", requireUser, requireAdmin, (req, res) => {
-  const { ip } = req.body || {};
-  if (!ip) return res.status(400).json({ error: "IP address required" });
-  const d = db.prepare("SELECT * FROM device WHERE id = 1").get();
-  if (d.owner && d.owner !== req.user.username) {
-    return res.status(409).json({ error: `Device is linked to "${d.owner}". Ask them to disconnect it first.` });
-  }
-  db.prepare("UPDATE device SET ip = ?, owner = ? WHERE id = 1").run(ip, req.user.username);
-  broadcast("status", deviceStatusPayload());
-  res.json(deviceStatusPayload());
-});
+app.post(
+  "/api/device/connect",
+  requireUser,
+  requireAdmin,
+  wrap(async (req, res) => {
+    const { ip } = req.body || {};
+    if (!ip) return res.status(400).json({ error: "IP address required" });
+    const d = (await db.one("SELECT owner FROM device WHERE id = 1")) || {};
+    if (d.owner && d.owner !== req.user.username) {
+      return res.status(409).json({ error: `Device is linked to "${d.owner}". Ask them to disconnect it first.` });
+    }
+    await db.query("UPDATE device SET ip = $1, owner = $2 WHERE id = 1", [String(ip), req.user.username]);
+    const status = await deviceStatusPayload();
+    broadcast("status", status);
+    res.json(status);
+  })
+);
 
-app.post("/api/device/disconnect", requireUser, requireAdmin, (req, res) => {
-  const d = db.prepare("SELECT * FROM device WHERE id = 1").get();
-  if (d.owner && d.owner !== req.user.username) return res.status(403).json({ error: "Only the linking admin can disconnect this device" });
-  db.prepare("UPDATE device SET ip = NULL, owner = NULL, online = 0 WHERE id = 1").run();
-  broadcast("status", deviceStatusPayload());
-  res.json(deviceStatusPayload());
-});
+app.post(
+  "/api/device/disconnect",
+  requireUser,
+  requireAdmin,
+  wrap(async (req, res) => {
+    const d = (await db.one("SELECT owner FROM device WHERE id = 1")) || {};
+    if (d.owner && d.owner !== req.user.username) return res.status(403).json({ error: "Only the linking admin can disconnect this device" });
+    await db.query("UPDATE device SET ip = NULL, owner = NULL, online = false WHERE id = 1");
+    const status = await deviceStatusPayload();
+    broadcast("status", status);
+    res.json(status);
+  })
+);
 
 app.get("/api/device/install-command", requireUser, requireAdmin, (req, res) => {
   // The device key is only ever shown to admins, once, for pasting into the Pi installer.
@@ -381,93 +441,130 @@ app.get("/api/device/install-command", requireUser, requireAdmin, (req, res) => 
 // ══════════════════════════════════════ TRIGGERS (dashboard → Pi) ════════════
 const lastFired = new Map(); // `${user}:${type}` -> timestamp
 
-app.post("/api/trigger", requireUser, (req, res) => {
-  const { type, duration } = req.body || {};
-  if (!["lights", "audio", "pepper", "last"].includes(type)) return res.status(400).json({ error: "Invalid trigger type" });
-  const key = `${req.user.username}:${type}`;
-  const last = lastFired.get(key) || 0;
-  if (Date.now() - last < TRIGGER_COOLDOWN_MS) {
-    return res.status(429).json({ error: `Cooldown active — wait ${Math.ceil((TRIGGER_COOLDOWN_MS - (Date.now() - last)) / 1000)}s before firing "${type}" again` });
-  }
-  lastFired.set(key, Date.now());
+app.post(
+  "/api/trigger",
+  requireUser,
+  wrap(async (req, res) => {
+    const { type, duration } = req.body || {};
+    if (!["lights", "audio", "pepper", "last"].includes(type)) return res.status(400).json({ error: "Invalid trigger type" });
+    const key = `${req.user.username}:${type}`;
+    const last = lastFired.get(key) || 0;
+    if (Date.now() - last < TRIGGER_COOLDOWN_MS) {
+      return res.status(429).json({ error: `Cooldown active — wait ${Math.ceil((TRIGGER_COOLDOWN_MS - (Date.now() - last)) / 1000)}s before firing "${type}" again` });
+    }
+    lastFired.set(key, Date.now());
 
-  const eventId = uuid();
-  const now = new Date().toISOString();
-  db.prepare(
-    `INSERT INTO trigger_events (id, type, status, source, is_rat, is_last, detail, requested_by, confidence, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`
-  ).run(eventId, type, "pending", "manual", 0, type === "last" ? 1 : 0, "Manual test", req.user.username, null, now);
+    const eventId = uuid();
+    const cmdId = uuid();
+    const now = new Date().toISOString();
+    const dur = Number.isFinite(Number(duration)) && Number(duration) ? Number(duration) : 2;
+    try {
+      await db.tx(async (client) => {
+        await client.query(
+          `INSERT INTO trigger_events (id, type, status, source, is_rat, is_last, detail, requested_by, confidence, created_at)
+           VALUES ($1,$2,'pending','manual',false,$3,'Manual test',$4,NULL,$5)`,
+          [eventId, type, type === "last", req.user.username, now]
+        );
+        await client.query(
+          `INSERT INTO commands (id, type, duration, status, trigger_event_id, created_at)
+           VALUES ($1,$2,$3,'pending',$4,$5)`,
+          [cmdId, type, dur, eventId, now]
+        );
+      });
+    } catch (err) {
+      lastFired.delete(key); // a failed attempt should not use up the cooldown
+      throw err;
+    }
 
-  const cmdId = uuid();
-  db.prepare(
-    `INSERT INTO commands (id, type, duration, status, trigger_event_id, created_at) VALUES (?,?,?,?,?,?)`
-  ).run(cmdId, type, Number(duration) || 2, "pending", eventId, now);
-
-  broadcast("trigger_requested", { id: eventId, type, status: "pending", user: req.user.username, ts: now });
-  res.status(202).json({ id: eventId, status: "pending" });
-});
+    broadcast("trigger_requested", { id: eventId, type, status: "pending", user: req.user.username, ts: now });
+    res.status(202).json({ id: eventId, status: "pending" });
+  })
+);
 
 // ══════════════════════════════════════ LOGS / DETECTIONS / PHOTOS ═══════════
-app.get("/api/logs", requireUser, (req, res) => {
-  const limit = Math.min(Number(req.query.limit) || 100, 500);
-  const since = req.query.since || null;
+app.get(
+  "/api/logs",
+  requireUser,
+  wrap(async (req, res) => {
+    const limit = parseLimit(req.query.limit, 100, 500);
+    const since = toIso(req.query.since);
 
-  const detRows = db
-    .prepare(`SELECT * FROM detections ${since ? "WHERE timestamp > ?" : ""} ORDER BY timestamp DESC LIMIT ?`)
-    .all(...(since ? [since, limit] : [limit]));
-  const trgRows = db
-    .prepare(`SELECT * FROM trigger_events ${since ? "WHERE created_at > ?" : ""} ORDER BY created_at DESC LIMIT ?`)
-    .all(...(since ? [since, limit] : [limit]));
+    const [detRows, trgRows] = await Promise.all([
+      db.many(
+        `SELECT * FROM detections
+          WHERE ($1::timestamptz IS NULL OR "timestamp" > $1::timestamptz)
+          ORDER BY "timestamp" DESC LIMIT $2`,
+        [since, limit]
+      ),
+      db.many(
+        `${TRIGGER_SELECT}
+          WHERE ($1::timestamptz IS NULL OR t.created_at > $1::timestamptz)
+          ORDER BY t.created_at DESC LIMIT $2`,
+        [since, limit]
+      ),
+    ]);
 
-  const merged = [...detRows.map(detectionToLogEntry), ...trgRows.map(triggerToLogEntry)]
-    .sort((a, b) => new Date(b.ts) - new Date(a.ts))
-    .slice(0, limit);
+    const merged = [...detRows.map(detectionToLogEntry), ...trgRows.map(triggerToLogEntry)]
+      .sort((a, b) => new Date(b.ts) - new Date(a.ts))
+      .slice(0, limit);
 
-  res.json(merged);
-});
+    res.json(merged);
+  })
+);
 
-app.get("/api/detections", requireUser, (req, res) => {
-  const limit = Math.min(Number(req.query.limit) || 60, 200);
-  const since = req.query.since || null;
-  const rows = db
-    .prepare(`SELECT * FROM detections ${since ? "WHERE timestamp > ?" : ""} ORDER BY timestamp DESC LIMIT ?`)
-    .all(...(since ? [since, limit] : [limit]));
-  res.json(
-    rows.map((d) => {
-      const isManual = d.source === "manual";
-      return {
-        id: d.id,
-        ts: d.timestamp,
-        tsStr: fmtT(d.timestamp),
-        dateStr: fmtD(d.timestamp),
-        confidence: d.confidence,
-        url: photoUrlFor(d.photo_path),
-        actionsFired: JSON.parse(d.actions_fired || "[]"),
-        escalated: !!d.escalated,
-        type: isManual ? "capture" : d.escalated ? "last" : "pepper",
-        isRat: !isManual,
-        capturedBy: isManual ? d.captured_by : null,
-      };
-    })
-  );
-});
+app.get(
+  "/api/detections",
+  requireUser,
+  wrap(async (req, res) => {
+    const limit = parseLimit(req.query.limit, 60, 200);
+    const since = toIso(req.query.since);
+    const rows = await db.many(
+      `SELECT * FROM detections
+        WHERE ($1::timestamptz IS NULL OR "timestamp" > $1::timestamptz)
+        ORDER BY "timestamp" DESC LIMIT $2`,
+      [since, limit]
+    );
+    res.json(
+      rows.map((d) => {
+        const isManual = d.source === "manual";
+        return {
+          id: d.id,
+          ts: d.timestamp,
+          tsStr: fmtT(d.timestamp),
+          dateStr: fmtD(d.timestamp),
+          confidence: d.confidence,
+          url: photoUrlFor(d.photo_path),
+          actionsFired: Array.isArray(d.actions_fired) ? d.actions_fired : [],
+          escalated: !!d.escalated,
+          type: isManual ? "capture" : d.escalated ? "last" : "pepper",
+          isRat: !isManual,
+          capturedBy: isManual ? d.captured_by : null,
+        };
+      })
+    );
+  })
+);
 
-app.get("/api/analytics/hourly", requireUser, (req, res) => {
-  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-  const rows = db.prepare("SELECT type, created_at FROM trigger_events WHERE created_at > ? AND status != 'fail'").all(since);
-  const buckets = Array.from({ length: 24 }, (_, i) => {
-    const h = new Date();
-    h.setMinutes(0, 0, 0);
-    h.setHours(h.getHours() - (23 - i));
-    return { label: `${String(h.getHours()).padStart(2, "0")}:00`, lights: 0, audio: 0, pepper: 0, last: 0, _h: h };
-  });
-  rows.forEach((r) => {
-    const t = new Date(r.created_at);
-    const b = buckets.find((b) => b._h.getHours() === t.getHours() && b._h.getDate() === t.getDate());
-    if (b && b[r.type] !== undefined) b[r.type]++;
-  });
-  res.json(buckets.map(({ _h, ...b }) => b));
-});
+app.get(
+  "/api/analytics/hourly",
+  requireUser,
+  wrap(async (req, res) => {
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const rows = await db.many("SELECT type, created_at FROM trigger_events WHERE created_at > $1 AND status != 'fail'", [since]);
+    const buckets = Array.from({ length: 24 }, (_, i) => {
+      const h = new Date();
+      h.setMinutes(0, 0, 0);
+      h.setHours(h.getHours() - (23 - i));
+      return { label: `${String(h.getHours()).padStart(2, "0")}:00`, lights: 0, audio: 0, pepper: 0, last: 0, _h: h };
+    });
+    rows.forEach((r) => {
+      const t = new Date(r.created_at);
+      const b = buckets.find((b) => b._h.getHours() === t.getHours() && b._h.getDate() === t.getDate());
+      if (b && b[r.type] !== undefined) b[r.type]++;
+    });
+    res.json(buckets.map(({ _h, ...b }) => b));
+  })
+);
 
 // Admin-only, aggregate-only report — per FR-6x this summarizes device
 // connectivity and deterrence trends across the week. Deliberately does NOT
@@ -475,153 +572,325 @@ app.get("/api/analytics/hourly", requireUser, (req, res) => {
 // registered user's own view (Activity/Analytics), not the admin's.
 // (Kept for backward compatibility — the Device Reports page below uses the
 // stored weekly_reports snapshots instead of this live aggregate.)
-app.get("/api/admin/weekly-report", requireUser, requireAdmin, (req, res) => {
-  const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-  const until = new Date().toISOString();
+app.get(
+  "/api/admin/weekly-report",
+  requireUser,
+  requireAdmin,
+  wrap(async (req, res) => {
+    const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    const until = new Date().toISOString();
 
-  const device = db.prepare("SELECT * FROM device WHERE id = 1").get() || {};
-  const detectionStats = db
-    .prepare("SELECT COUNT(*) AS total, COALESCE(SUM(escalated), 0) AS escalated FROM detections WHERE created_at >= ? AND source != 'manual'")
-    .get(since);
+    const device = (await db.one("SELECT * FROM device WHERE id = 1")) || {};
+    const detectionStats = await db.one(
+      `SELECT COUNT(*)::int AS total, (COUNT(*) FILTER (WHERE escalated))::int AS escalated
+         FROM detections WHERE created_at >= $1 AND source != 'manual'`,
+      [since]
+    );
+    const triggerRows = await db.many(
+      "SELECT type, status, COUNT(*)::int AS c FROM trigger_events WHERE created_at >= $1 GROUP BY type, status",
+      [since]
+    );
+    const deterrence = {};
+    for (const r of triggerRows) {
+      if (!deterrence[r.type]) deterrence[r.type] = { ok: 0, fail: 0 };
+      if (r.status === "ok") deterrence[r.type].ok += r.c;
+      else if (r.status === "fail") deterrence[r.type].fail += r.c;
+    }
 
-  const triggerRows = db
-    .prepare("SELECT type, status, COUNT(*) AS c FROM trigger_events WHERE created_at >= ? GROUP BY type, status")
-    .all(since);
-  const deterrence = {};
-  for (const r of triggerRows) {
-    if (!deterrence[r.type]) deterrence[r.type] = { ok: 0, fail: 0 };
-    if (r.status === "ok") deterrence[r.type].ok += r.c;
-    else if (r.status === "fail") deterrence[r.type].fail += r.c;
-  }
-
-  res.json({
-    generated_at: until,
-    period: { since, until },
-    device: { online: !!device.online, ip: device.ip || null, owner: device.owner || null, last_seen: device.last_seen || null },
-    detections: { total: detectionStats.total, escalated: detectionStats.escalated },
-    deterrence,
-  });
-});
+    res.json({
+      generated_at: until,
+      period: { since, until },
+      device: { online: !!device.online, ip: device.ip || null, owner: device.owner || null, last_seen: device.last_seen || null },
+      detections: { total: detectionStats.total, escalated: detectionStats.escalated },
+      deterrence,
+    });
+  })
+);
 
 // ══════════════════════════════════════ DEVICE REPORTS (stored snapshots) ═══
 // Backs the admin "Device Reports" page (Weekly tab). Reads/writes the
-// weekly_reports table that db.js already defines — this table existed in
-// the schema but had no routes reading or writing it until now, which is
-// why the frontend's requests were 404ing.
-app.get("/api/admin/weekly-reports", requireUser, requireAdmin, (req, res) => {
-  const rows = db
-    .prepare(
+// weekly_reports table.
+app.get(
+  "/api/admin/weekly-reports",
+  requireUser,
+  requireAdmin,
+  wrap(async (req, res) => {
+    const rows = await db.many(
       `SELECT id, device_owner, device_ip, period_since, period_until, generated_at, detections_total, detections_escalated
-       FROM weekly_reports ORDER BY generated_at DESC`
-    )
-    .all();
-  res.json(rows);
-});
+         FROM weekly_reports ORDER BY generated_at DESC`
+    );
+    res.json(rows);
+  })
+);
 
-app.get("/api/admin/weekly-reports/:id", requireUser, requireAdmin, (req, res) => {
-  const row = db.prepare("SELECT * FROM weekly_reports WHERE id = ?").get(req.params.id);
-  if (!row) return res.status(404).json({ error: "Report not found" });
-  res.json({ ...row, entries: JSON.parse(row.entries_json || "[]") });
-});
+app.get(
+  "/api/admin/weekly-reports/:id",
+  requireUser,
+  requireAdmin,
+  wrap(async (req, res) => {
+    const row = await db.one("SELECT * FROM weekly_reports WHERE id = $1", [req.params.id]);
+    if (!row) return res.status(404).json({ error: "Report not found" });
+    // deterrence_json and entries_json are sent as JSON *text*, exactly as the
+    // original API did, so the dashboard keeps working unchanged.
+    res.json({
+      ...row,
+      deterrence_json: JSON.stringify(row.deterrence_json ?? {}),
+      entries_json: JSON.stringify(row.entries_json ?? []),
+      entries: Array.isArray(row.entries_json) ? row.entries_json : [],
+    });
+  })
+);
 
-app.post("/api/admin/weekly-reports/generate", requireUser, requireAdmin, (req, res) => {
-  const id = generateWeeklyReport();
-  res.status(201).json({ id });
-});
+app.post(
+  "/api/admin/weekly-reports/generate",
+  requireUser,
+  requireAdmin,
+  wrap(async (req, res) => {
+    const id = await generateWeeklyReport();
+    res.status(201).json({ id });
+  })
+);
 
-app.get("/api/photos/:id", (req, res) => {
-  const file = path.join(PHOTOS_DIR, `${req.params.id}.jpg`);
-  if (!fs.existsSync(file)) return res.status(404).json({ error: "Photo not found" });
-  res.sendFile(file);
-});
+const PHOTO_ID_RE = /^[A-Za-z0-9-]{1,64}$/;
+app.get(
+  "/api/photos/:id",
+  wrap(async (req, res) => {
+    const id = req.params.id;
+    if (!PHOTO_ID_RE.test(id)) return res.status(404).json({ error: "Photo not found" });
+    const { data, error } = await photoBucket().download(`${id}.jpg`);
+    if (error || !data) {
+      const notFound =
+        !error || error.status === 404 || String(error.statusCode) === "404" || /not.?found/i.test(error.message || "");
+      if (notFound) return res.status(404).json({ error: "Photo not found" });
+      console.error("[storage] download failed:", error.message);
+      return res.status(502).json({ error: "Photo storage unavailable" });
+    }
+    const buf = Buffer.from(await data.arrayBuffer());
+    res.set({ "Content-Type": "image/jpeg", "Content-Length": String(buf.length), "Cache-Control": "public, max-age=86400" });
+    res.send(buf);
+  })
+);
 
 // ══════════════════════════════════════ PI → BACKEND ══════════════════════════
-app.post("/api/pi/heartbeat", requireDevice, (req, res) => {
-  const { online, ip, armed, last_seen } = req.body || {};
-  const d = db.prepare("SELECT * FROM device WHERE id = 1").get();
-  db.prepare(
-    `UPDATE device SET online=?, ip=COALESCE(?,ip), armed_lights=?, armed_audio=?, armed_pepper=?, armed_last=?, last_seen=? WHERE id = 1`
-  ).run(
-    online === false ? 0 : 1,
-    ip || null,
-    armed?.lights !== undefined ? (armed.lights ? 1 : 0) : d.armed_lights,
-    armed?.audio !== undefined ? (armed.audio ? 1 : 0) : d.armed_audio,
-    armed?.pepper !== undefined ? (armed.pepper ? 1 : 0) : d.armed_pepper,
-    armed?.last !== undefined ? (armed.last ? 1 : 0) : d.armed_last,
-    last_seen || new Date().toISOString()
-  );
-  broadcast("status", deviceStatusPayload());
-  res.json({ ok: true });
-});
-
-app.post("/api/pi/photos", requireDevice, upload.single("photo"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No photo uploaded (field name must be 'photo')" });
-  const id = path.basename(req.file.filename, ".jpg");
-  res.status(201).json({ photo_id: id, photo_url: `/api/photos/${id}` });
-});
-
-app.post("/api/pi/detections", requireDevice, (req, res) => {
-  const { timestamp, confidence, photo_url, actions_fired, escalated_to_last_resort } = req.body || {};
-  if (!timestamp) return res.status(400).json({ error: "timestamp is required" });
-  const id = uuid();
-  const now = new Date().toISOString();
-  const photoPath = photo_url ? `${path.basename(photo_url)}.jpg` : null;
-
-  db.prepare(
-    `INSERT INTO detections (id, timestamp, confidence, photo_path, actions_fired, escalated, created_at)
-     VALUES (?,?,?,?,?,?,?)`
-  ).run(id, timestamp, confidence ?? null, photoPath, JSON.stringify(actions_fired || []), escalated_to_last_resort ? 1 : 0, now);
-
-  (actions_fired || []).forEach((type) => {
-    db.prepare(
-      `INSERT INTO trigger_events (id, type, status, source, is_rat, is_last, detail, requested_by, detection_id, confidence, fired_at, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-    ).run(uuid(), type, "ok", "auto", 0, type === "last" ? 1 : 0, "Auto-response: rat detected", "auto-detect", id, confidence ?? null, timestamp, now);
-  });
-  if (escalated_to_last_resort && !(actions_fired || []).includes("last")) {
-    db.prepare(
-      `INSERT INTO trigger_events (id, type, status, source, is_rat, is_last, detail, requested_by, detection_id, confidence, fired_at, created_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
-    ).run(uuid(), "last", "ok", "auto", 0, 1, "Last resort — escalating", "auto-detect", id, confidence ?? null, timestamp, now);
-  }
-
-  const detRow = db.prepare("SELECT * FROM detections WHERE id = ?").get(id);
-  broadcast("detection", detectionToLogEntry(detRow));
-  res.status(201).json({ id });
-});
-
-app.post("/api/pi/ack", requireDevice, (req, res) => {
-  const { type, status, fired_at, command_id, photo_url } = req.body || {};
-  let row = command_id ? db.prepare("SELECT * FROM commands WHERE id = ?").get(command_id) : null;
-  if (!row) row = db.prepare("SELECT * FROM commands WHERE type = ? AND status != 'done' ORDER BY created_at DESC LIMIT 1").get(type);
-  if (!row) return res.status(404).json({ error: "No matching pending command" });
-
-  db.prepare("UPDATE commands SET status = 'done' WHERE id = ?").run(row.id);
-
-  if (row.trigger_event_id) {
-    db.prepare("UPDATE trigger_events SET status = ?, fired_at = ? WHERE id = ?").run(
-      status === "ok" ? "ok" : "fail",
-      fired_at || new Date().toISOString(),
-      row.trigger_event_id
+app.post(
+  "/api/pi/heartbeat",
+  requireDevice,
+  wrap(async (req, res) => {
+    const { online, ip, armed, last_seen } = req.body || {};
+    const flag = (v) => (v === undefined ? null : !!v);
+    await db.query(
+      `UPDATE device SET
+         online       = $1,
+         ip           = COALESCE($2, ip),
+         armed_lights = COALESCE($3::boolean, armed_lights),
+         armed_audio  = COALESCE($4::boolean, armed_audio),
+         armed_pepper = COALESCE($5::boolean, armed_pepper),
+         armed_last   = COALESCE($6::boolean, armed_last),
+         last_seen    = $7
+       WHERE id = 1`,
+      [
+        online !== false,
+        ip ? String(ip) : null,
+        flag(armed?.lights),
+        flag(armed?.audio),
+        flag(armed?.pepper),
+        flag(armed?.last),
+        toIso(last_seen) || new Date().toISOString(),
+      ]
     );
-    const t = db.prepare("SELECT * FROM trigger_events WHERE id = ?").get(row.trigger_event_id);
-    broadcast("trigger_ack", triggerToLogEntry(t));
-  }
-  res.json({ ok: true });
-});
+    broadcast("status", await deviceStatusPayload());
+    res.json({ ok: true });
+  })
+);
 
-// Pi polls this instead of running its own server — works from behind NAT/firewalls
-app.get("/api/pi/commands", requireDevice, (req, res) => {
-  const pending = db.prepare("SELECT * FROM commands WHERE status = 'pending' ORDER BY created_at ASC LIMIT 10").all();
-  const ids = pending.map((c) => c.id);
-  if (ids.length) {
-    const placeholders = ids.map(() => "?").join(",");
-    db.prepare(`UPDATE commands SET status = 'delivered' WHERE id IN (${placeholders})`).run(...ids);
-  }
-  res.json(pending.map((c) => ({ id: c.id, type: c.type, duration: c.duration })));
-});
+app.post(
+  "/api/pi/photos",
+  requireDevice,
+  upload.single("photo"),
+  wrap(async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "No photo uploaded (field name must be 'photo')" });
+    const id = uuid();
+    const { error } = await photoBucket().upload(`${id}.jpg`, req.file.buffer, { contentType: "image/jpeg", upsert: false });
+    if (error) {
+      console.error("[storage] upload failed:", error.message);
+      return res.status(502).json({ error: "Photo storage failed" });
+    }
+    res.status(201).json({ photo_id: id, photo_url: `/api/photos/${id}` });
+  })
+);
+
+const INSERT_AUTO_TRIGGER = `
+  INSERT INTO trigger_events
+    (id, type, status, source, is_rat, is_last, detail, requested_by, detection_id, confidence, fired_at, created_at)
+  VALUES ($1,$2,'ok','auto',false,$3,$4,'auto-detect',$5,$6,$7,$8)`;
+
+app.post(
+  "/api/pi/detections",
+  requireDevice,
+  wrap(async (req, res) => {
+    const { timestamp, confidence, photo_url, actions_fired, escalated_to_last_resort } = req.body || {};
+    if (!timestamp) return res.status(400).json({ error: "timestamp is required" });
+    const tsIso = toIso(timestamp);
+    if (!tsIso) return res.status(400).json({ error: "timestamp is not a valid date" });
+
+    const actions = Array.isArray(actions_fired) ? actions_fired.map(String) : [];
+    const conf = toNumberOrNull(confidence);
+    const escalated = !!escalated_to_last_resort;
+    const id = uuid();
+    const now = new Date().toISOString();
+    const photoPath = photo_url ? `${path.basename(String(photo_url))}.jpg` : null;
+
+    await db.tx(async (client) => {
+      await client.query(
+        `INSERT INTO detections (id, "timestamp", confidence, photo_path, actions_fired, escalated, created_at)
+         VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7)`,
+        [id, tsIso, conf, photoPath, JSON.stringify(actions), escalated, now]
+      );
+      for (const type of actions) {
+        await client.query(INSERT_AUTO_TRIGGER, [uuid(), type, type === "last", "Auto-response: rat detected", id, conf, tsIso, now]);
+      }
+      if (escalated && !actions.includes("last")) {
+        await client.query(INSERT_AUTO_TRIGGER, [uuid(), "last", true, "Last resort — escalating", id, conf, tsIso, now]);
+      }
+    });
+
+    const detRow = await db.one("SELECT * FROM detections WHERE id = $1", [id]);
+    broadcast("detection", detectionToLogEntry(detRow));
+    res.status(201).json({ id });
+  })
+);
+
+app.post(
+  "/api/pi/ack",
+  requireDevice,
+  wrap(async (req, res) => {
+    const { type, status, fired_at, command_id } = req.body || {};
+    let row = command_id ? await db.one("SELECT * FROM commands WHERE id = $1", [String(command_id)]) : null;
+    if (!row) {
+      row = await db.one("SELECT * FROM commands WHERE type = $1 AND status != 'done' ORDER BY created_at DESC LIMIT 1", [
+        type === undefined || type === null ? null : String(type),
+      ]);
+    }
+    if (!row) return res.status(404).json({ error: "No matching pending command" });
+
+    const firedIso = toIso(fired_at) || new Date().toISOString();
+    await db.tx(async (client) => {
+      await client.query("UPDATE commands SET status = 'done' WHERE id = $1", [row.id]);
+      if (row.trigger_event_id) {
+        await client.query("UPDATE trigger_events SET status = $1, fired_at = $2 WHERE id = $3", [
+          status === "ok" ? "ok" : "fail",
+          firedIso,
+          row.trigger_event_id,
+        ]);
+      }
+    });
+
+    if (row.trigger_event_id) {
+      const t = await db.one(`${TRIGGER_SELECT} WHERE t.id = $1`, [row.trigger_event_id]);
+      if (t) broadcast("trigger_ack", triggerToLogEntry(t));
+    }
+    res.json({ ok: true });
+  })
+);
+
+// Pi polls this instead of running its own server — works from behind NAT/firewalls.
+// The claim is one atomic statement, so a command is never handed out twice.
+app.get(
+  "/api/pi/commands",
+  requireDevice,
+  wrap(async (req, res) => {
+    const rows = await db.many(
+      `UPDATE commands SET status = 'delivered'
+        WHERE id IN (
+          SELECT id FROM commands WHERE status = 'pending'
+          ORDER BY created_at ASC LIMIT 10 FOR UPDATE SKIP LOCKED
+        )
+        RETURNING id, type, duration, created_at`
+    );
+    rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    res.json(rows.map((c) => ({ id: c.id, type: c.type, duration: c.duration })));
+  })
+);
 
 // ── health check ─────────────────────────────────────────────────────────────
 app.get("/api/health", (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
-server.listen(PORT, () => console.log(`RatAvert backend listening on :${PORT}`));
+// ── error handler (must be last) ─────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  if (err instanceof multer.MulterError) {
+    return res.status(err.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({ error: err.message });
+  }
+  if (err && err.type === "entity.parse.failed") return res.status(400).json({ error: "Invalid JSON body" });
+  if (err && err.type === "entity.too.large") return res.status(413).json({ error: "Request body too large" });
+  console.error("[error]", req.method, req.originalUrl, err);
+  res.status(500).json({ error: "Internal server error" });
+});
+
+// ── background jobs ──────────────────────────────────────────────────────────
+// Note: on a free host that goes to sleep these timers pause until the next request wakes it.
+function startBackgroundJobs() {
+  // Mark the device offline if its heartbeat has gone silent.
+  let checkingOffline = false;
+  setInterval(async () => {
+    if (checkingOffline) return;
+    checkingOffline = true;
+    try {
+      const cutoff = new Date(Date.now() - OFFLINE_AFTER_MS);
+      const { rowCount } = await db.query(
+        "UPDATE device SET online = false WHERE id = 1 AND online = true AND last_seen IS NOT NULL AND last_seen < $1",
+        [cutoff]
+      );
+      if (rowCount) broadcast("status", await deviceStatusPayload());
+    } catch (err) {
+      console.error("[offline-check]", err.message);
+    } finally {
+      checkingOffline = false;
+    }
+  }, 5000);
+
+  // Auto-generate a snapshot every Sunday at 00:00, once per day at most.
+  let lastAutoGenDate = null;
+  setInterval(async () => {
+    const now = new Date();
+    if (now.getDay() !== 0 || now.getHours() !== 0) return;
+    const today = now.toDateString();
+    if (lastAutoGenDate === today) return;
+    lastAutoGenDate = today; // claim the day first so overlapping ticks cannot create two reports
+    try {
+      await generateWeeklyReport();
+    } catch (err) {
+      lastAutoGenDate = null; // try again on the next tick
+      console.error("[weekly-report]", err.message);
+    }
+  }, 60000);
+}
+
+function shutdown(signal) {
+  console.log(`[shutdown] ${signal} received`);
+  wss.clients.forEach((c) => c.terminate());
+  server.close(() => db.pool.end().finally(() => process.exit(0)));
+  setTimeout(() => process.exit(0), 8000).unref();
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
+async function main() {
+  await db.init();
+  try {
+    const { error } = await supabase.storage.getBucket(PHOTO_BUCKET);
+    if (error) {
+      console.warn(`[storage] Could not find bucket "${PHOTO_BUCKET}" (${error.message}). Create a private bucket with that name in Supabase Storage.`);
+    } else {
+      console.log(`[storage] Using bucket "${PHOTO_BUCKET}".`);
+    }
+  } catch (err) {
+    console.warn("[storage] Bucket check failed:", err.message);
+  }
+  startBackgroundJobs();
+  server.listen(PORT, () => console.log(`RatAvert backend listening on :${PORT}`));
+}
+main().catch((err) => {
+  console.error("Startup failed:", err.message);
+  process.exit(1);
+});
