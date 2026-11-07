@@ -703,8 +703,8 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
       <section className="land-feats">
         {[
           { title: "YOLOv8 Detection", desc: "Computer vision model trained on rat images, running real-time inference on Raspberry Pi edge hardware." },
-          { title: "Multi-Sensory Response", desc: "Lights, ultrasonic sound, and a peppermint diffuser activate in sequence to deter rats without chemicals." },
-          { title: "Horn Escalation", desc: "If a rat stays after the first responses, the horn sounds as the final deterrent." },
+          { title: "Multi-Sensory Response", desc: "Lights, ultrasonic sound, a peppermint diffuser, and a horn deter rats without chemicals, one at a time." },
+          { title: "Randomized Response", desc: "Each detection triggers a different deterrent from the last one, so rats cannot predict or adapt to the pattern." },
           { title: "Photo Capture", desc: "Every detection saves a timestamped photo from the Pi camera, viewable anytime in Activity → Photos." },
           { title: "Guided Setup", desc: "Connect your Raspberry Pi in three simple steps from Settings — no manual code editing required." },
           { title: "Reports & Analytics", desc: "Detection frequency, deterrence effectiveness, and confidence distributions — exportable for documentation." },
