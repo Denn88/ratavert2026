@@ -598,9 +598,9 @@ document.head.appendChild(stEl);
 const TRIGGER_TYPES = ["lights", "audio", "pepper", "last"];
 const TYPE_META = {
   lights: { label: "Lights",     icon: "💡", cls: "tbl",  color: "#10B981" },
-  audio:  { label: "Audio",      icon: "🔊", cls: "tba",  color: "#FCD34D" },
-  pepper: { label: "Peppermint", icon: "🌿", cls: "tbp",  color: "#6EE7B7" },
-  last:   { label: "Last Resort",icon: "🚨", cls: "tblr", color: "#F87171" },
+  audio:  { label: "Ultrasonic", icon: "📡", cls: "tba",  color: "#FCD34D" },
+  pepper: { label: "Diffuser",   icon: "💨", cls: "tbp",  color: "#6EE7B7" },
+  last:   { label: "Horn",       icon: "📢", cls: "tblr", color: "#F87171" },
   capture:{ label: "Test Capture",icon: "📸", cls: "tbc", color: "#38BDF8" },
 };
 const AUTO_SEQ = ["lights", "audio", "pepper"];
@@ -661,7 +661,7 @@ function PasswordField({ value, onChange, placeholder, onKeyDown, className = "l
 function LandingPage({ onLogin, theme, onToggleTheme }) {
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = setInterval(() => setTick((v) => v + 1), 2000); return () => clearInterval(t); }, []);
-  const seq = ["LIGHTS", "AUDIO", "PEPPER", "LAST"];
+  const seq = ["LIGHTS", "ULTRASONIC", "DIFFUSER", "HORN"];
   const ai = tick % 4;
   return (
     <div className="landing">
@@ -677,7 +677,7 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
       <section className="land-hero">
         <div className="eyebrow"><span className="pdot" />IoT · YOLOv8 · Raspberry Pi</div>
         <h1 className="hero-title">Smart Rat<br /><span>Deterrence</span><br />System</h1>
-        <p className="hero-sub">Real-time detection + multi-sensory response. Lights, audio, peppermint, and adaptive trapping — with every detection captured on camera by your own Raspberry Pi.</p>
+        <p className="hero-sub">Real-time detection + multi-sensory response. Lights, ultrasonic sound, a peppermint diffuser, and a horn — with every detection captured on camera by your own Raspberry Pi.</p>
         <div className="hero-cta">
           <button className="cta-p" onClick={onLogin}>Open Dashboard</button>
         </div>
@@ -703,8 +703,8 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
       <section className="land-feats">
         {[
           { title: "YOLOv8 Detection", desc: "Computer vision model trained on rat images, running real-time inference on Raspberry Pi edge hardware." },
-          { title: "Multi-Sensory Response", desc: "Ultrasonic sound, LED strobe, and peppermint oil diffusion activate in sequence to deter rats without chemicals." },
-          { title: "Anti-Habituation Trap", desc: "Servo-controlled snap trap fires using randomized timing so rats cannot predict or adapt to the pattern." },
+          { title: "Multi-Sensory Response", desc: "Lights, ultrasonic sound, and a peppermint diffuser activate in sequence to deter rats without chemicals." },
+          { title: "Horn Escalation", desc: "If a rat stays after the first responses, the horn sounds as the final deterrent." },
           { title: "Photo Capture", desc: "Every detection saves a timestamped photo from the Pi camera, viewable anytime in Activity → Photos." },
           { title: "Guided Setup", desc: "Connect your Raspberry Pi in three simple steps from Settings — no manual code editing required." },
           { title: "Reports & Analytics", desc: "Detection frequency, deterrence effectiveness, and confidence distributions — exportable for documentation." },
@@ -841,13 +841,13 @@ function DonutChart({ totals }) {
 }
 
 function RatAlert({ seqStep, lastNow, onDismiss }) {
-  const steps = ["LIGHTS", "AUDIO", "PEPPER"];
+  const steps = ["LIGHTS", "ULTRASONIC", "DIFFUSER"];
   return (
     <div className="rat-alert">
       <div className="rat-msg">⚠ RAT DETECTED — AUTO-RESPONSE ACTIVE</div>
       <div className="seq-row">
         {steps.map((s, i) => <span key={i} className={`ss ${i < seqStep ? "done" : i === seqStep ? "now" : "wait"}`}>{s}</span>)}
-        <span className={`ss ${lastNow ? "last-now" : "wait"}`}>LAST RESORT</span>
+        <span className={`ss ${lastNow ? "last-now" : "wait"}`}>HORN</span>
       </div>
       <button className="dismiss" onClick={onDismiss}>✕ CLEAR</button>
     </div>
@@ -948,7 +948,7 @@ function DeviceReportsPage() {
             { label: "Account",     val: r.device_owner || "—", sub: "IoT device owner" },
             { label: "Device IP",   val: r.device_ip || "—", sub: "at time of report" },
             { label: "Period",      val: `${new Date(r.period_since).toLocaleDateString()} – ${new Date(r.period_until).toLocaleDateString()}`, sub: "7-day window" },
-            { label: "Detections",  val: r.detections_total, color: "var(--red)", sub: `${r.detections_escalated} escalated to Last Resort` },
+            { label: "Detections",  val: r.detections_total, color: "var(--red)", sub: `${r.detections_escalated} escalated to Horn` },
           ].map((s, i) => (
             <div key={i}><div className="si-label">{s.label}</div>
               <div className="si-val" style={{ color: s.color }}>{s.val}</div>
@@ -965,7 +965,7 @@ function DeviceReportsPage() {
                 <tr key={l.id}>
                   <td><span className="ts">{l.dateStr}</span></td>
                   <td><span className="ts">{l.tsStr}</span></td>
-                  <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
+                  <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
                   <td>{statusBadge(l.status)}</td>
                   <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.confidence != null ? Math.round(l.confidence * 100) + "%" : "—"}</td>
                   <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
@@ -1014,7 +1014,7 @@ function DeviceReportsPage() {
         {[
           { label: "Report Type", val: range === "weekly" ? "WEEKLY" : "MONTHLY", color: "var(--accent)", sub: range === "weekly" ? "7-day snapshots" : "grouped by month" },
           { label: "Total Detections", val: totalDetections, color: "var(--red)", sub: "across all periods" },
-          { label: "Escalated", val: totalEscalated, color: "var(--orange)", sub: "to Last Resort" },
+          { label: "Escalated", val: totalEscalated, color: "var(--orange)", sub: "to Horn" },
           { label: "Devices", val: uniqueDevices, color: "var(--teal)", sub: "reporting accounts" },
           { label: "Last Generated", val: lastGenerated ? new Date(lastGenerated).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "--:--", color: "var(--accent)", sub: lastGenerated ? new Date(lastGenerated).toLocaleDateString() : "no reports yet" },
         ].map((s, i) => (
@@ -1029,7 +1029,7 @@ function DeviceReportsPage() {
           { cls: "mc1", label: "Reports", val: totalReports, sub: <span className="badge bg">stored snapshots</span> },
           { cls: "mc2", label: "Resolution Rate", val: `${resolvedPct}%`, sub: <span style={{ color: "var(--teal)" }}>without escalation</span> },
           { cls: "mc3", label: "Avg / Report", val: avgPerReport, sub: "detections" },
-          { cls: "mc4", label: "Escalated", val: totalEscalated, sub: <span className="badge br">to Last Resort</span> },
+          { cls: "mc4", label: "Escalated", val: totalEscalated, sub: <span className="badge br">to Horn</span> },
         ].map((m, i) => (
           <div key={i} className={`mc ${m.cls}`}>
             <div className="mc-lbl">{m.label}</div>
@@ -1208,7 +1208,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
             {logs.slice(0, 8).map((l, i) => (
               <tr key={l.id} className={`${i === 0 ? "new-r" : ""} ${l.isRat ? "rat-r" : ""} ${l.isLast ? "lst-r" : ""}`}>
                 <td><span className="ts">{l.dateStr} {l.tsStr}</span></td>
-                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
+                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.user}</td>
                 <td>{statusBadge(l.status)}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
@@ -1224,16 +1224,16 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
 function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, notice }) {
   const types = [
     { key: "lights", name: "Lights",      desc: "Strobe / illuminate", danger: false },
-    { key: "audio",  name: "Audio Alert", desc: "Broadcast alarm",     danger: false },
-    { key: "pepper", name: "Peppermint",  desc: "Trigger spray",       danger: false },
-    { key: "last",   name: "Last Resort", desc: "Auto if rat stays",   danger: true },
+    { key: "audio",  name: "Ultrasonic",  desc: "Ultrasonic emitter",  danger: false },
+    { key: "pepper", name: "Diffuser",    desc: "Release scent",       danger: false },
+    { key: "last",   name: "Horn",        desc: "Auto if rat stays",   danger: true },
   ];
   const lastFor = (k) => logs.find((l) => l.type === k && !l.isRat);
   return (
     <>
       <div style={{ marginBottom: "16px", padding: "12px 16px", background: "rgba(16,185,129,.06)", border: "1px solid rgba(16,185,129,.18)", borderRadius: "8px" }}>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--accent)", marginBottom: "3px", letterSpacing: "1px" }}>AUTO-RESPONSE SEQUENCE</div>
-        <div style={{ fontSize: "12px", color: "var(--dim)" }}>Triggers fire automatically when the Pi confirms a rat: Lights → Audio → Peppermint → Last Resort. You can also arm/disarm and test-fire manually — the Pi is the one that actually performs the action and acknowledges it back here.</div>
+        <div style={{ fontSize: "12px", color: "var(--dim)" }}>Triggers fire automatically when the Pi confirms a rat: Lights → Ultrasonic → Diffuser → Horn. You can also arm/disarm and test-fire manually — the Pi is the one that actually performs the action and acknowledges it back here.</div>
       </div>
       {!rpiConnected && (
         <div style={{ marginBottom: 16, padding: "10px 16px", background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.2)", borderRadius: 8, color: "var(--red)", fontSize: 12, fontFamily: "var(--font-mono)" }}>
@@ -1312,7 +1312,7 @@ function ActivityLogTable({ logs, onViewPhoto }) {
               <tr key={l.id} className={`${i === 0 && pg === 0 ? "new-r" : ""} ${l.isRat ? "rat-r" : ""} ${l.isLast ? "lst-r" : ""}`}>
                 <td><span className="ts">{l.dateStr}</span></td>
                 <td><span className="ts">{l.tsStr}</span></td>
-                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
+                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.user}</td>
                 <td>{statusBadge(l.status)}</td>
                 <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
@@ -1528,7 +1528,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
     URL.revokeObjectURL(url);
   }
   function exportDailyReport() {
-    const rows = [["Date", "Detections", "Resolved", "Escalated", "Resolution Rate", "Avg Confidence", "Lights", "Audio", "Pepper", "Last Resort"]];
+    const rows = [["Date", "Detections", "Resolved", "Escalated", "Resolution Rate", "Avg Confidence", "Lights", "Ultrasonic", "Diffuser", "Horn"]];
     Array.from(dayMap.values()).sort((a, b) => b.dateObj - a.dateObj).forEach((d) => {
       const resolved = Math.max(d.detections - d.escalated, 0);
       const total = resolved + d.escalated || 1;
@@ -1586,8 +1586,8 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
           <div className="eff-bar-escalated" style={{ width: `${escalatedPct}%` }} />
         </div>
         <div className="eff-legend">
-          <span><b style={{ color: "var(--accent)" }}>■</b> Resolved by Lights/Audio/Peppermint: <b>{resolvedPct}%</b> ({resolved} events)</span>
-          <span><b style={{ color: "var(--red)" }}>■</b> Escalated to Last Resort: <b>{escalatedPct}%</b> ({escalated} events)</span>
+          <span><b style={{ color: "var(--accent)" }}>■</b> Resolved by Lights/Ultrasonic/Diffuser: <b>{resolvedPct}%</b> ({resolved} events)</span>
+          <span><b style={{ color: "var(--red)" }}>■</b> Escalated to Horn: <b>{escalatedPct}%</b> ({escalated} events)</span>
         </div>
       </div>
 
@@ -1648,9 +1648,9 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
           <div className="hbar-list">
             {[
               { label: "Lights", val: wk.lights, color: TYPE_META.lights.color },
-              { label: "Audio",  val: wk.audio,  color: TYPE_META.audio.color },
-              { label: "Pepper", val: wk.pepper, color: TYPE_META.pepper.color },
-              { label: "Last",   val: wk.last,   color: TYPE_META.last.color },
+              { label: "Ultrasonic", val: wk.audio,  color: TYPE_META.audio.color },
+              { label: "Diffuser",  val: wk.pepper, color: TYPE_META.pepper.color },
+              { label: "Horn",      val: wk.last,   color: TYPE_META.last.color },
             ].map((row) => (
               <div className="hbar-row" key={row.label}>
                 <span className="hbar-icon-lbl">{row.label}</span>
@@ -1780,7 +1780,7 @@ function Settings({ enabled, setEnabled, detecting, setDetecting, detInt, setDet
             <div className="sc-title">Detection Settings</div>
             <div className="srow"><div><div className="sn">Auto-Detection</div><div className="sd">Pi scans and responds automatically</div></div><div className={`tog ${detecting ? "on" : ""} red`} onClick={() => setDetecting(!detecting)} style={{ cursor: "pointer" }} /></div>
             <div className="srow"><div><div className="sn">Detection Interval</div><div className="sd">How often the Pi checks (seconds)</div></div><input className="sin" type="number" value={detInt} min={5} max={120} onChange={(e) => setDetInt(Number(e.target.value))} /></div>
-            <div className="srow"><div><div className="sn">Sequence</div><div className="sd">Lights → Audio → Peppermint → Last Resort (Pi-controlled timing)</div></div></div>
+            <div className="srow"><div><div className="sn">Sequence</div><div className="sd">Lights → Ultrasonic → Diffuser → Horn (Pi-controlled timing)</div></div></div>
           </div>
           <div className="scard">
             <div className="sc-title">Trigger Config</div>
@@ -1862,8 +1862,8 @@ function Settings({ enabled, setEnabled, detecting, setDetecting, detInt, setDet
           <div className="iot-card">
             <div className="iot-title">Wiring Reference (optional)</div>
             <div className="pin-grid">
-              {[{ num: 17, name: "Lights", color: "#10B981" }, { num: 27, name: "Audio", color: "#FCD34D" },
-                { num: 22, name: "Pepper", color: "#6EE7B7" }, { num: 18, name: "L.Resort", color: "#F87171" },
+              {[{ num: 17, name: "Lights", color: "#10B981" }, { num: 27, name: "Ultrasonic", color: "#FCD34D" },
+                { num: 22, name: "Diffuser", color: "#6EE7B7" }, { num: 18, name: "Horn", color: "#F87171" },
                 { num: 11, name: "PIR", color: "#34D399" }, { num: 9, name: "IR", color: "#2DD4BF" },
                 { num: 10, name: "Camera", color: "#FB923C" }, { num: 25, name: "Buzzer", color: "#A3E635" },
               ].map((p) => (
