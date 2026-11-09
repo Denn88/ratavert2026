@@ -1228,7 +1228,7 @@ function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, 
   return (
     <>
       <div style={{ marginBottom: "16px", padding: "12px 16px", background: "rgba(16,185,129,.06)", border: "1px solid rgba(16,185,129,.18)", borderRadius: "8px" }}>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--accent)", marginBottom: "3px", letterSpacing: "1px" }}>AUTO-RESPONSE SEQUENCE</div>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--accent)", marginBottom: "3px", letterSpacing: "1px" }}>AUTOMATIC RESPONSE</div>
         <div style={{ fontSize: "12px", color: "var(--dim)" }}>When the Pi confirms a rat, it picks one deterrent (Lights, Ultrasonic, Diffuser or Horn), a different one each time. You can also test-fire any armed deterrent manually — the Pi is the one that actually performs the action and acknowledges it back here.</div>
       </div>
       {!rpiConnected && (
@@ -1251,7 +1251,7 @@ function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, 
               <div className="t-desc">{t.desc}</div>
               <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginBottom: "10px" }}>
                 <span className="chip chip-auto">AUTO</span>
-                {rpiConnected && <span className="chip chip-rpi">GPIO</span>}
+                {rpiConnected && <span className="chip chip-rpi">PI</span>}
               </div>
               <div className="trow">
                 <span className="tlbl">Armed</span>
