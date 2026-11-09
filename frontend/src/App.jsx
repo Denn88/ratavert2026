@@ -1966,7 +1966,6 @@ export default function App() {
         <div className="nav-right" style={{ marginLeft: "auto" }}>
           <button className="theme-toggle" onClick={toggleTheme}>{theme === "dark" ? "☀ Light" : "☾ Dark"}</button>
           <span className="nav-time">{fmtT(clock)}</span>
-          {ratCount > 0 && <span className="nb nb-rat">{ratCount}</span>}
           {!isAdmin && <span className={`nb ${rpiConnected ? "nb-rpi" : "nb-off"}`}>{rpiConnected ? "Pi Online" : "Pi Offline"}</span>}
           {!isAdmin && <span className="nb nb-live">LIVE</span>}
           <span className={`nb ${isAdmin ? "nb-admin" : "nb-user"}`}>{isAdmin ? "Admin" : "User"}</span>
