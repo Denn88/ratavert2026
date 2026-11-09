@@ -1185,7 +1185,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
             <span className="cc-title">Trigger Frequency — Last 24h</span>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               {Object.entries(TYPE_META).map(([k, m]) => (
-                <span key={k} style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: m.color, display: "flex", alignItems: "center", gap: "3px" }}>
+                <span key={k} style={{ fontSize: "11px", fontWeight: 600, fontFamily: "var(--font-mono)", color: m.color, display: "flex", alignItems: "center", gap: "3px", textShadow: "-1px -1px 0 #333, 1px -1px 0 #333, -1px 1px 0 #333, 1px 1px 0 #333, -1px 0 0 #333, 1px 0 0 #333, 0 -1px 0 #333, 0 1px 0 #333" }}>
                   <span style={{ width: 7, height: 2, background: m.color, display: "inline-block", borderRadius: 1 }} />{m.label}
                 </span>
               ))}
