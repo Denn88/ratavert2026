@@ -465,6 +465,7 @@ const css = `
 
   /* SETTINGS */
   .sg { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .sg-col { display:flex; flex-direction:column; gap:14px; max-width:760px; }
   .scard { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px; }
   .scard.full { grid-column:span 2; }
   .sc-title { font-family:var(--font-mono); font-size:10px; letter-spacing:2px;
@@ -662,7 +663,7 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = setInterval(() => setTick((v) => v + 1), 2000); return () => clearInterval(t); }, []);
   const seq = ["LIGHTS", "ULTRASONIC", "DIFFUSER", "HORN"];
-  const ai = tick % 4;
+  const ai = [2, 0, 3, 1, 0, 2, 1, 3][tick % 8];
   return (
     <div className="landing">
       <div className="land-bg" /><div className="grid-ov" /><div className="scan-bar" />
@@ -696,7 +697,7 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
             <div className="hd-stat"><div className="hd-sval" style={{ color: "var(--teal)" }}>--</div><div className="hd-slbl">Sign in to view</div></div>
           </div>
           <div className="hd-seq">
-            {seq.map((s, i) => <div key={i} className={`hd-si ${i < ai ? "a" : i === ai ? "f" : ""}`}>{s}</div>)}
+            {seq.map((s, i) => <div key={i} className={`hd-si ${i === ai ? "f" : ""}`}>{s}</div>)}
           </div>
         </div>
       </section>
@@ -840,15 +841,10 @@ function DonutChart({ totals }) {
   );
 }
 
-function RatAlert({ seqStep, lastNow, onDismiss }) {
-  const steps = ["LIGHTS", "ULTRASONIC", "DIFFUSER"];
+function RatAlert({ onDismiss }) {
   return (
     <div className="rat-alert">
-      <div className="rat-msg">⚠ RAT DETECTED — AUTO-RESPONSE ACTIVE</div>
-      <div className="seq-row">
-        {steps.map((s, i) => <span key={i} className={`ss ${i < seqStep ? "done" : i === seqStep ? "now" : "wait"}`}>{s}</span>)}
-        <span className={`ss ${lastNow ? "last-now" : "wait"}`}>HORN</span>
-      </div>
+      <div className="rat-msg">⚠ RAT DETECTED — DETERRENT ACTIVATED</div>
       <button className="dismiss" onClick={onDismiss}>✕ CLEAR</button>
     </div>
   );
@@ -1226,14 +1222,14 @@ function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, 
     { key: "lights", name: "Lights",      desc: "Strobe / illuminate", danger: false },
     { key: "audio",  name: "Ultrasonic",  desc: "Ultrasonic emitter",  danger: false },
     { key: "pepper", name: "Diffuser",    desc: "Release scent",       danger: false },
-    { key: "last",   name: "Horn",        desc: "Auto if rat stays",   danger: true },
+    { key: "last",   name: "Horn",        desc: "Alarm horn",          danger: false },
   ];
   const lastFor = (k) => logs.find((l) => l.type === k && !l.isRat);
   return (
     <>
       <div style={{ marginBottom: "16px", padding: "12px 16px", background: "rgba(16,185,129,.06)", border: "1px solid rgba(16,185,129,.18)", borderRadius: "8px" }}>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--accent)", marginBottom: "3px", letterSpacing: "1px" }}>AUTO-RESPONSE SEQUENCE</div>
-        <div style={{ fontSize: "12px", color: "var(--dim)" }}>Triggers fire automatically when the Pi confirms a rat: Lights → Ultrasonic → Diffuser → Horn. You can also arm/disarm and test-fire manually — the Pi is the one that actually performs the action and acknowledges it back here.</div>
+        <div style={{ fontSize: "12px", color: "var(--dim)" }}>When the Pi confirms a rat, it picks one deterrent (Lights, Ultrasonic, Diffuser or Horn), a different one each time. You can also test-fire any armed deterrent manually — the Pi is the one that actually performs the action and acknowledges it back here.</div>
       </div>
       {!rpiConnected && (
         <div style={{ marginBottom: 16, padding: "10px 16px", background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.2)", borderRadius: 8, color: "var(--red)", fontSize: 12, fontFamily: "var(--font-mono)" }}>
@@ -1709,7 +1705,7 @@ function ChangePasswordForm() {
 
   return (
     <div className="scard">
-      <div className="sc-title">Change Password</div>
+      <div className="sc-title">Account Settings — Change Password</div>
       <div className="login-field">
         <label className="login-lbl">Current Password</label>
         <PasswordField value={current} placeholder="Current password" onChange={(e) => setCurrent(e.target.value)} />
@@ -1728,155 +1724,35 @@ function ChangePasswordForm() {
   );
 }
 
-// ── Settings Page — system settings + Device (Pi) setup ────────────────────
-function Settings({ enabled, setEnabled, detecting, setDetecting, detInt, setDetInt, rpiConnected, rpiIp, rpiOwner, currentUser, isAdmin, onConnect, onDisconnect, fetchInstallCommand }) {
-  const [tab, setTab] = useState("system");
-  const [ip, setIp] = useState(rpiIp || "");
-  const [msg, setMsg] = useState(null);
-  const [installCmd, setInstallCmd] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const isOwner = rpiOwner === currentUser;
-  const lockedByOther = rpiOwner && !isOwner;
-
-  useEffect(() => { setIp(rpiIp || ""); }, [rpiIp]);
-
-  function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 3500); }
-
-  async function connect() {
-    if (lockedByOther || !ip || busy) return;
-    setBusy(true);
-    try { await onConnect(ip); flash("Linked — waiting for the Pi's first heartbeat"); }
-    catch (e) { flash(e.message || "Could not connect"); }
-    finally { setBusy(false); }
-  }
-  async function disconnect() {
-    if (!isOwner || busy) return;
-    setBusy(true);
-    try { await onDisconnect(); setIp(""); flash("Disconnected and unlinked"); }
-    catch (e) { flash(e.message || "Could not disconnect"); }
-    finally { setBusy(false); }
-  }
-  async function loadInstallCommand() {
-    try { const { command } = await fetchInstallCommand(); setInstallCmd(command); }
-    catch { setInstallCmd(null); }
-  }
-  function copyCommand() {
-    if (!installCmd) return;
-    navigator.clipboard?.writeText(installCmd);
-    flash("Command copied");
-  }
-
+// ── Settings Page — Detection, Trigger Config, Account (one scrolling page) ──
+function Settings({ enabled, setEnabled, detecting, setDetecting }) {
   return (
-    <>
-      <div className="tabbar">
-        <button className={`tabbtn ${tab === "system" ? "active" : ""}`} onClick={() => setTab("system")}>System</button>
-        <button className={`tabbtn ${tab === "account" ? "active" : ""}`} onClick={() => setTab("account")}>Account</button>
-        <button className={`tabbtn ${tab === "device" ? "active" : ""}`} onClick={() => { setTab("device"); if (isAdmin && !installCmd) loadInstallCommand(); }}>Device</button>
+    <div className="sg-col">
+      <div className="scard">
+        <div className="sc-title">Detection Settings</div>
+        <div className="srow">
+          <div><div className="sn">Detection Status</div><div className="sd">Turn automatic rat detection on or off</div></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: detecting ? "var(--red)" : "var(--dim)" }}>{detecting ? "ON" : "OFF"}</span>
+            <div className={`tog ${detecting ? "on" : ""} red`} onClick={() => setDetecting(!detecting)} style={{ cursor: "pointer" }} />
+          </div>
+        </div>
+        <div className="srow"><div><div className="sn">Deterrence</div><div className="sd">Lights - Ultrasonic - Diffuser - Horn</div></div></div>
       </div>
 
-      {tab === "system" && (
-        <div className="sg">
-          <div className="scard">
-            <div className="sc-title">Detection Settings</div>
-            <div className="srow"><div><div className="sn">Auto-Detection</div><div className="sd">Pi scans and responds automatically</div></div><div className={`tog ${detecting ? "on" : ""} red`} onClick={() => setDetecting(!detecting)} style={{ cursor: "pointer" }} /></div>
-            <div className="srow"><div><div className="sn">Detection Interval</div><div className="sd">How often the Pi checks (seconds)</div></div><input className="sin" type="number" value={detInt} min={5} max={120} onChange={(e) => setDetInt(Number(e.target.value))} /></div>
-            <div className="srow"><div><div className="sn">Sequence</div><div className="sd">Lights → Ultrasonic → Diffuser → Horn (Pi-controlled timing)</div></div></div>
+      <div className="scard">
+        <div className="sc-title">Trigger Config</div>
+        {Object.entries(TYPE_META).map(([k, m]) => (
+          k === "capture" ? null :
+          <div key={k} className="srow">
+            <div><div className="sn">{m.label}</div><div className="sd">{enabled[k] ? "Armed" : "Disabled"}</div></div>
+            <div className={`tog ${enabled[k] ? "on" : ""}`} onClick={() => setEnabled(k, !enabled[k])} style={{ cursor: "pointer" }} />
           </div>
-          <div className="scard">
-            <div className="sc-title">Trigger Config</div>
-            {Object.entries(TYPE_META).map(([k, m]) => (
-              k === "capture" ? null :
-              <div key={k} className="srow">
-                <div><div className="sn">{m.label}</div><div className="sd">{enabled[k] ? "Armed" : "Disabled"}</div></div>
-                <div className={`tog ${enabled[k] ? "on" : ""} ${k === "last" ? "red" : ""}`} onClick={() => setEnabled(k, !enabled[k])} style={{ cursor: "pointer" }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {tab === "account" && (
-        <div className="sg">
-          <ChangePasswordForm />
-        </div>
-      )}
-
-      {tab === "device" && (
-        <>
-          <div className="setup-wizard">
-            <div className="setup-step done">
-              <div className="setup-step-num">1</div>
-              <div className="setup-step-title">Power on your Pi</div>
-              <div className="setup-step-desc">Plug in the Pi and connect it to the same network as this backend.</div>
-            </div>
-            <div className={`setup-step ${installCmd ? "done" : ""}`}>
-              <div className="setup-step-num">2</div>
-              <div className="setup-step-title">Run one command</div>
-              <div className="setup-step-desc">Copy the command below (admin-only, includes your device key) and run it once on the Pi.</div>
-            </div>
-            <div className={`setup-step ${rpiConnected ? "done" : ""}`}>
-              <div className="setup-step-num">3</div>
-              <div className="setup-step-title">Connect from here</div>
-              <div className="setup-step-desc">Enter the Pi's IP below and click Connect, then wait for its first heartbeat.</div>
-            </div>
-          </div>
-
-          {isAdmin ? (
-            <div className="iot-card" style={{ marginBottom: 14 }}>
-              <div className="iot-title">Install Command — run once on the Pi</div>
-              <div className="command-box">
-                <span>{installCmd || "Loading…"}</span>
-                <button className="copy-btn" onClick={copyCommand} disabled={!installCmd}>Copy</button>
-              </div>
-            </div>
-          ) : (
-            <div className="locked-banner">Only admins can view the install command and pair the device.</div>
-          )}
-
-          {lockedByOther && (
-            <div className="locked-banner">This device is linked to account <b style={{ color: "var(--text)" }}>"{rpiOwner}"</b>. Ask them to disconnect it before connecting here.</div>
-          )}
-
-          {isAdmin && (
-            <div className="iot-card" style={{ marginBottom: 14 }}>
-              <div className="iot-title">Connect Your Pi</div>
-              {rpiIp && isOwner ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <span className="owner-pill">Linked to {rpiOwner} · {rpiIp} · {rpiConnected ? "online" : "waiting for heartbeat"}</span>
-                  <button className="iot-btn ghost" onClick={disconnect} disabled={busy}>Disconnect & Unlink</button>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                    <input className="input-iot" placeholder="Pi IP address, e.g. 192.168.1.42" value={ip}
-                      onChange={(e) => setIp(e.target.value)} disabled={lockedByOther} />
-                    <button className="iot-btn prim" onClick={connect} disabled={lockedByOther || !ip || busy}>Connect</button>
-                  </div>
-                  <div style={{ fontSize: "11px", color: "var(--dim)", marginTop: "10px" }}>Find the IP by running <b style={{ color: "var(--text)" }}>hostname -I</b> on the Pi after setup finishes.</div>
-                </>
-              )}
-              {msg && <div style={{ marginTop: "10px", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--accent)" }}>{msg}</div>}
-            </div>
-          )}
-
-          <div className="iot-card">
-            <div className="iot-title">Wiring Reference (optional)</div>
-            <div className="pin-grid">
-              {[{ num: 17, name: "Lights", color: "#10B981" }, { num: 27, name: "Ultrasonic", color: "#FCD34D" },
-                { num: 22, name: "Diffuser", color: "#6EE7B7" }, { num: 18, name: "Horn", color: "#F87171" },
-                { num: 11, name: "PIR", color: "#34D399" }, { num: 9, name: "IR", color: "#2DD4BF" },
-                { num: 10, name: "Camera", color: "#FB923C" }, { num: 25, name: "Buzzer", color: "#A3E635" },
-              ].map((p) => (
-                <div key={p.num} className="pin-item">
-                  <div className="pin-num" style={{ color: p.color }}>GPIO{p.num}</div>
-                  <div className="pin-name">{p.name}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </>
+      <ChangePasswordForm />
+    </div>
   );
 }
 
