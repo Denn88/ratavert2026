@@ -1185,7 +1185,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
             <span className="cc-title">Trigger Frequency — Last 24h</span>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               {Object.entries(TYPE_META).map(([k, m]) => (
-               <span key={k} style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: m.color, display: "flex", alignItems: "center", gap: "3px", WebkitTextStroke: "0.5px #444", paintOrder: "stroke fill" }}>
+               <span key={k} className={`tbadge ${m.cls}`}>
                   <span style={{ width: 7, height: 2, background: m.color, display: "inline-block", borderRadius: 1 }} />{m.label}
                 </span>
               ))}
