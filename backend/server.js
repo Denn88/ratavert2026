@@ -750,7 +750,7 @@ app.post(
         await client.query(INSERT_AUTO_TRIGGER, [uuid(), type, type === "last", "Auto-response: rat detected", id, conf, tsIso, now]);
       }
       if (escalated && !actions.includes("last")) {
-        await client.query(INSERT_AUTO_TRIGGER, [uuid(), "last", true, "Last resort — escalating", id, conf, tsIso, now]);
+        await client.query(INSERT_AUTO_TRIGGER, [uuid(), "last", true, "Horn — escalating", id, conf, tsIso, now]);
       }
     });
 

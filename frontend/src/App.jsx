@@ -53,10 +53,10 @@ const css = `
     padding:20px 40px; border-bottom:1px solid rgba(22,51,32,.6);
     background:rgba(5,15,10,.8); backdrop-filter:blur(10px); }
   body[data-theme="light"] .land-nav { background:rgba(255,255,255,.85); }
-  .land-brand { font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--accent);
+  .land-brand { font-family:var(--font-mono); font-size:16px; font-weight:700; color:var(--accent);
     letter-spacing:4px; display:flex; align-items:center; gap:10px; }
   .land-btns { display:flex; gap:8px; align-items:center; }
-  .lbtn { padding:9px 20px; border-radius:8px; font-size:13px; font-weight:600;
+  .lbtn { padding:9px 20px; border-radius:8px; font-size:14px; font-weight:600;
     cursor:pointer; transition:all .2s; font-family:var(--font-body); border:1px solid; }
   .lbtn-ghost { background:transparent; border-color:var(--border); color:var(--dim); }
   .lbtn-ghost:hover { border-color:var(--accent); color:var(--accent); background:rgba(16,185,129,.05); }
@@ -66,7 +66,7 @@ const css = `
     align-items:center; justify-content:center; text-align:center; padding:80px 24px 60px; gap:28px; }
   .eyebrow { display:inline-flex; align-items:center; gap:8px; padding:5px 16px; border-radius:20px;
     background:rgba(16,185,129,.08); border:1px solid rgba(16,185,129,.2);
-    font-family:var(--font-mono); font-size:10px; letter-spacing:2.5px;
+    font-family:var(--font-mono); font-size:11px; letter-spacing:2.5px;
     color:var(--accent); text-transform:uppercase; animation:fadeUp .6s ease both; }
   .hero-title { font-size:clamp(42px,8vw,80px); font-weight:700; line-height:1.05;
     letter-spacing:-2px; color:var(--text); animation:fadeUp .7s .1s ease both; }
@@ -74,7 +74,7 @@ const css = `
   .hero-sub { font-size:clamp(14px,2.5vw,17px); color:var(--dim); max-width:520px;
     line-height:1.7; animation:fadeUp .7s .2s ease both; }
   .hero-cta { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; animation:fadeUp .7s .3s ease both; }
-  .cta-p { padding:14px 32px; border-radius:9px; font-size:14px; font-weight:700;
+  .cta-p { padding:14px 32px; border-radius:9px; font-size:15px; font-weight:700;
     background:var(--accent); border:none; color:var(--bg); cursor:pointer; transition:all .2s;
     font-family:var(--font-body); box-shadow:0 0 30px rgba(16,185,129,.25); }
   .cta-p:hover { background:var(--bright); transform:translateY(-2px); box-shadow:0 0 40px rgba(16,185,129,.4); }
@@ -84,15 +84,15 @@ const css = `
   .hero-device::before { content:''; position:absolute; top:0; left:0; right:0; height:1px;
     background:linear-gradient(90deg,transparent,rgba(16,185,129,.5),transparent); }
   .hd-bar  { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-  .hd-ttl  { font-family:var(--font-mono); font-size:9px; letter-spacing:2px; color:var(--dim); }
+  .hd-ttl  { font-family:var(--font-mono); font-size:10px; letter-spacing:2px; color:var(--dim); }
   .hd-dots { display:flex; gap:5px; }
   .hd-dot  { width:8px; height:8px; border-radius:50%; }
   .hd-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
   .hd-stat { background:var(--panel); border-radius:8px; padding:10px; border:1px solid var(--border); }
-  .hd-sval { font-family:var(--font-mono); font-size:18px; font-weight:700; }
-  .hd-slbl { font-size:9px; color:var(--dim); margin-top:3px; }
+  .hd-sval { font-family:var(--font-mono); font-size:19px; font-weight:700; }
+  .hd-slbl { font-size:10px; color:var(--dim); margin-top:3px; }
   .hd-seq  { display:flex; gap:6px; justify-content:center; }
-  .hd-si   { padding:5px 12px; border-radius:5px; font-size:10px; font-family:var(--font-mono); border:1px solid var(--border); color:var(--dim); }
+  .hd-si   { padding:5px 12px; border-radius:5px; font-size:11px; font-family:var(--font-mono); border:1px solid var(--border); color:var(--dim); }
   .hd-si.a { background:rgba(16,185,129,.15); color:var(--accent); border-color:var(--accent); }
   .hd-si.f { background:rgba(248,113,113,.15); color:var(--red); border-color:var(--red); animation:flash .5s infinite; }
   .land-feats { position:relative; z-index:5; display:grid;
@@ -101,12 +101,12 @@ const css = `
   .feat { background:var(--surface); border:1px solid var(--border); border-radius:12px;
     padding:24px; transition:all .25s; animation:fadeUp .7s ease both; }
   .feat:hover { border-color:var(--muted); transform:translateY(-3px); background:var(--panel); }
-  .feat-icon  { font-size:28px; margin-bottom:12px; display:block; }
-  .feat-title { font-size:15px; font-weight:700; margin-bottom:8px; color:var(--text); }
-  .feat-desc  { font-size:13px; color:var(--dim); line-height:1.6; }
+  .feat-icon  { font-size:29px; margin-bottom:12px; display:block; }
+  .feat-title { font-size:16px; font-weight:700; margin-bottom:8px; color:var(--text); }
+  .feat-desc  { font-size:14px; color:var(--dim); line-height:1.6; }
   .land-foot  { position:relative; z-index:5; border-top:1px solid var(--border); padding:24px 40px;
     display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
-    background:rgba(5,15,10,.6); font-family:var(--font-mono); font-size:11px; }
+    background:rgba(5,15,10,.6); font-family:var(--font-mono); font-size:12px; }
   body[data-theme="light"] .land-foot { background:rgba(238,244,240,.6); }
   .land-foot-brand { color:var(--dim); letter-spacing:2px; }
   .land-foot-copy  { color:var(--muted); }
@@ -122,13 +122,13 @@ const css = `
   .login-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px;
     border-radius:16px 16px 0 0; background:linear-gradient(90deg,transparent,var(--accent),transparent); }
   .login-brand { display:flex; align-items:center; gap:10px; margin-bottom:8px;
-    font-family:var(--font-mono); font-size:16px; font-weight:700; color:var(--accent); letter-spacing:3px; }
-  .login-sub  { font-size:12px; color:var(--dim); margin-bottom:28px; font-family:var(--font-mono); }
+    font-family:var(--font-mono); font-size:17px; font-weight:700; color:var(--accent); letter-spacing:3px; }
+  .login-sub  { font-size:13px; color:var(--dim); margin-bottom:28px; font-family:var(--font-mono); }
   .login-field { margin-bottom:16px; }
-  .login-lbl  { display:block; font-size:10px; letter-spacing:1.5px; text-transform:uppercase;
+  .login-lbl  { display:block; font-size:11px; letter-spacing:1.5px; text-transform:uppercase;
     color:var(--dim); font-family:var(--font-mono); margin-bottom:7px; }
   .login-in   { width:100%; padding:11px 14px; border-radius:8px; border:1px solid var(--border);
-    background:var(--panel); color:var(--text); font-size:13px; font-family:var(--font-body);
+    background:var(--panel); color:var(--text); font-size:14px; font-family:var(--font-body);
     outline:none; transition:all .2s; }
   .login-in:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(16,185,129,.1); }
   .login-in::placeholder { color:var(--muted); }
@@ -136,20 +136,20 @@ const css = `
   .login-err  { display:flex; align-items:center; gap:6px;
     background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.2);
     border-radius:7px; padding:10px 14px; margin-bottom:16px;
-    font-size:12px; color:var(--red); font-family:var(--font-mono); animation:fadeIn .3s ease; }
+    font-size:13px; color:var(--red); font-family:var(--font-mono); animation:fadeIn .3s ease; }
   .login-btn  { width:100%; padding:13px; border-radius:8px;
     background:var(--accent); border:none; color:var(--bg);
-    font-size:14px; font-weight:700; font-family:var(--font-body);
+    font-size:15px; font-weight:700; font-family:var(--font-body);
     cursor:pointer; transition:all .2s; margin-top:6px;
     display:flex; align-items:center; justify-content:center; gap:8px; }
   .login-btn:hover:not(:disabled) { background:var(--bright); transform:translateY(-1px); box-shadow:0 8px 24px rgba(16,185,129,.3); }
   .login-btn:disabled { opacity:.6; cursor:not-allowed; }
   .login-hint { background:rgba(16,185,129,.06); border:1px solid rgba(16,185,129,.15);
     border-radius:7px; padding:10px 14px; margin-top:14px;
-    font-size:11px; color:var(--dim); font-family:var(--font-mono); line-height:1.8; }
+    font-size:12px; color:var(--dim); font-family:var(--font-mono); line-height:1.8; }
   .login-hint span { color:var(--accent); }
   .login-back { display:flex; align-items:center; gap:6px; margin-top:24px;
-    font-size:12px; color:var(--muted); font-family:var(--font-mono);
+    font-size:13px; color:var(--muted); font-family:var(--font-mono);
     cursor:pointer; transition:color .2s; justify-content:center;
     background:none; border:none; }
   .login-back:hover { color:var(--accent); }
@@ -168,7 +168,7 @@ const css = `
   /* ─── THEME TOGGLE ── */
   .theme-toggle { display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:20px;
     background:var(--panel); border:1px solid var(--border); cursor:pointer;
-    font-family:var(--font-mono); font-size:11px; color:var(--dim); transition:all .15s; }
+    font-family:var(--font-mono); font-size:12px; color:var(--dim); transition:all .15s; }
   .theme-toggle:hover { border-color:var(--accent); color:var(--accent); }
 
   /* ─── NAVBAR ── */
@@ -178,13 +178,13 @@ const css = `
     display:flex; align-items:center; padding:0 16px; gap:0;
     position:sticky; top:0; z-index:100; flex-shrink:0;
     box-shadow:0 2px 20px rgba(16,185,129,.08); }
-  .nav-brand { font-family:var(--font-mono); font-size:14px; font-weight:700;
+  .nav-brand { font-family:var(--font-mono); font-size:15px; font-weight:700;
     color:var(--accent); letter-spacing:3px;
     display:flex; align-items:center; gap:10px; margin-right:16px; flex-shrink:0; }
   .brand-dot { width:10px; height:10px; border-radius:50%; background:var(--accent);
     animation:pulse 2s infinite; box-shadow:0 0 12px var(--accent); }
   .nav-right { display:flex; align-items:center; gap:6px; margin-left:auto; flex-shrink:0; }
-  .nb { padding:4px 10px; border-radius:6px; font-size:10px; font-weight:600;
+  .nb { padding:4px 10px; border-radius:6px; font-size:11px; font-weight:600;
     font-family:var(--font-mono); white-space:nowrap; }
   .nb-live  { background:rgba(16,185,129,.12); color:var(--accent); border:1px solid rgba(16,185,129,.3); }
   .nb-rat   { background:rgba(248,113,113,.12); color:var(--red);    border:1px solid rgba(248,113,113,.3); }
@@ -192,11 +192,11 @@ const css = `
   .nb-admin { background:rgba(16,185,129,.12);  color:var(--accent); border:1px solid rgba(16,185,129,.3); }
   .nb-user  { background:rgba(45,212,191,.12);  color:var(--teal);   border:1px solid rgba(45,212,191,.3); }
   .nb-off   { background:rgba(90,158,111,.1);   color:var(--dim);    border:1px solid var(--border); }
-  .nav-time { font-family:var(--font-mono); font-size:12px; color:var(--accent); }
+  .nav-time { font-family:var(--font-mono); font-size:13px; color:var(--accent); }
   .nav-user { display:flex; align-items:center; gap:7px; padding:5px 10px; border-radius:6px;
     background:var(--panel); border:1px solid var(--border);
-    font-size:11px; font-family:var(--font-mono); color:var(--dim); }
-  .nav-out  { padding:5px 10px; border-radius:6px; font-size:10px; font-weight:600;
+    font-size:12px; font-family:var(--font-mono); color:var(--dim); }
+  .nav-out  { padding:5px 10px; border-radius:6px; font-size:11px; font-weight:600;
     font-family:var(--font-mono); background:rgba(248,113,113,.08);
     border:1px solid rgba(248,113,113,.2); color:var(--red); cursor:pointer; transition:all .2s; }
   .nav-out:hover { background:rgba(248,113,113,.15); }
@@ -212,16 +212,16 @@ const css = `
     display:flex; flex-direction:column; padding:14px 0; overflow-y:auto;
   }
   .sb-section { padding:0 10px; margin-bottom:4px; }
-  .sb-label { font-size:9px; letter-spacing:2.5px; color:var(--muted); text-transform:uppercase;
+  .sb-label { font-size:10px; letter-spacing:2.5px; color:var(--muted); text-transform:uppercase;
     padding:8px 8px 4px; font-family:var(--font-mono); display:flex; align-items:center; gap:6px; }
   .sb-label.admin-lbl { color:var(--accent); }
   .sb-item { display:flex; align-items:center; gap:9px; padding:9px 10px; border-radius:7px;
-    cursor:pointer; font-size:13px; font-weight:500; color:var(--dim); transition:all .18s;
+    cursor:pointer; font-size:14px; font-weight:500; color:var(--dim); transition:all .18s;
     margin-bottom:1px; border:1px solid transparent; }
   .sb-item:hover { background:var(--panel); color:var(--text); }
   .sb-item.active { background:rgba(16,185,129,.1); color:var(--accent);
     border-color:rgba(16,185,129,.2); box-shadow:inset 3px 0 0 var(--accent); }
-  .sb-icon { font-size:15px; width:20px; text-align:center; }
+  .sb-icon { font-size:16px; width:20px; text-align:center; }
   .sb-divider { height:1px; background:var(--border); margin:8px 10px; }
   .admin-zone { margin:2px 6px 6px; padding:6px; border-radius:10px; border:1px solid rgba(16,185,129,.16); background:rgba(16,185,129,.03); }
 
@@ -229,31 +229,31 @@ const css = `
   .admin-panel-bar { display:flex; align-items:center; justify-content:space-between; gap:14px;
     flex-wrap:wrap; margin-bottom:18px; padding:12px 16px; border-radius:10px;
     background:rgba(16,185,129,.05); border:1px solid rgba(16,185,129,.18); }
-  .admin-panel-lbl { font-family:var(--font-mono); font-size:11px; letter-spacing:2px; color:var(--accent);
+  .admin-panel-lbl { font-family:var(--font-mono); font-size:12px; letter-spacing:2px; color:var(--accent);
     display:flex; align-items:center; gap:8px; text-transform:uppercase; }
-  .admin-panel-sub { color:var(--dim); letter-spacing:0.5px; text-transform:none; font-size:11px; }
+  .admin-panel-sub { color:var(--dim); letter-spacing:0.5px; text-transform:none; font-size:12px; }
   .admin-panel-tabs { display:flex; gap:8px; flex-wrap:wrap; }
   .admin-tab { display:flex; align-items:center; gap:7px; padding:9px 18px; border-radius:20px;
     border:1px solid var(--border); background:var(--panel); color:var(--dim);
-    font-size:12px; font-weight:600; font-family:var(--font-body); cursor:pointer; transition:all .18s; }
+    font-size:13px; font-weight:600; font-family:var(--font-body); cursor:pointer; transition:all .18s; }
   .admin-tab:hover { border-color:var(--muted); color:var(--text); }
   .admin-tab.active { background:rgba(16,185,129,.14); border-color:var(--accent); color:var(--accent);
     box-shadow:0 0 0 1px rgba(16,185,129,.25) inset; }
   .rpi-panel { margin:8px 10px; border-radius:8px; background:rgba(16,185,129,.06);
     border:1px solid rgba(16,185,129,.2); padding:11px; }
   .rpi-panel.offline { background:rgba(248,113,113,.05); border-color:rgba(248,113,113,.2); }
-  .rpi-lbl  { font-size:9px; font-family:var(--font-mono); color:var(--accent); letter-spacing:2px; margin-bottom:5px; }
-  .rpi-stat { font-size:11px; font-family:var(--font-mono); display:flex; align-items:center; gap:6px; }
-  .rpi-ip   { font-size:10px; color:var(--dim); margin-top:4px; font-family:var(--font-mono); }
+  .rpi-lbl  { font-size:10px; font-family:var(--font-mono); color:var(--accent); letter-spacing:2px; margin-bottom:5px; }
+  .rpi-stat { font-size:12px; font-family:var(--font-mono); display:flex; align-items:center; gap:6px; }
+  .rpi-ip   { font-size:11px; color:var(--dim); margin-top:4px; font-family:var(--font-mono); }
   .det-panel { margin:6px 10px 0; border-radius:8px; background:rgba(248,113,113,.05);
     border:1px solid rgba(248,113,113,.15); padding:11px; }
   .det-panel.active { animation:redGlow 2.5s infinite; }
-  .det-lbl  { font-size:9px; font-family:var(--font-mono); color:var(--red); letter-spacing:2px; margin-bottom:5px; }
-  .det-stat { font-size:11px; font-family:var(--font-mono); display:flex; align-items:center; gap:6px; }
-  .det-cnt  { font-size:10px; color:var(--dim); margin-top:4px; }
+  .det-lbl  { font-size:10px; font-family:var(--font-mono); color:var(--red); letter-spacing:2px; margin-bottom:5px; }
+  .det-stat { font-size:12px; font-family:var(--font-mono); display:flex; align-items:center; gap:6px; }
+  .det-cnt  { font-size:11px; color:var(--dim); margin-top:4px; }
   .pdot { display:inline-block; width:7px; height:7px; border-radius:50%; animation:pulse 1.2s infinite; }
   .sb-footer { margin-top:auto; padding:12px 16px; border-top:1px solid var(--border);
-    font-size:10px; color:var(--dim); font-family:var(--font-mono); }
+    font-size:11px; color:var(--dim); font-family:var(--font-mono); }
 
   /* ─── MAIN ── */
   .main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
@@ -261,42 +261,42 @@ const css = `
     border-bottom:1px solid rgba(248,113,113,.3); padding:10px 16px;
     display:flex; align-items:center; gap:10px;
     animation:slideDown .35s ease; flex-shrink:0; flex-wrap:wrap; }
-  .rat-icon { font-size:20px; animation:shake .6s infinite; }
-  .rat-msg  { font-family:var(--font-mono); font-size:11px; color:var(--red);
+  .rat-icon { font-size:21px; animation:shake .6s infinite; }
+  .rat-msg  { font-family:var(--font-mono); font-size:12px; color:var(--red);
     letter-spacing:1px; flex:1; font-weight:700; min-width:160px; }
   .seq-row  { display:flex; gap:5px; flex-wrap:wrap; }
-  .ss { padding:3px 8px; border-radius:4px; font-size:10px; font-family:var(--font-mono);
+  .ss { padding:3px 8px; border-radius:4px; font-size:11px; font-family:var(--font-mono);
     border:1px solid; transition:all .3s; }
   .ss.done { background:rgba(16,185,129,.15); color:var(--accent); border-color:var(--accent); }
   .ss.now  { background:rgba(248,113,113,.18); color:var(--red); border-color:var(--red); animation:flash .5s infinite; }
   .ss.wait { color:var(--muted); border-color:var(--muted); }
   .ss.last-now { background:rgba(251,146,60,.18); color:var(--orange); border-color:var(--orange); animation:flash .4s infinite; }
   .dismiss { padding:5px 11px; border-radius:5px; border:1px solid var(--red);
-    background:transparent; color:var(--red); font-size:11px; cursor:pointer; font-family:var(--font-mono); }
+    background:transparent; color:var(--red); font-size:12px; cursor:pointer; font-family:var(--font-mono); }
   .dismiss:hover { background:rgba(248,113,113,.12); }
   .content { flex:1; overflow-y:auto; padding:18px 20px; }
 
   /* TOAST */
   .toast { position:fixed; bottom:20px; right:20px; z-index:300; background:var(--surface);
     border:1px solid var(--red); color:var(--red); padding:12px 18px; border-radius:8px;
-    font-family:var(--font-mono); font-size:12px; box-shadow:0 12px 30px rgba(0,0,0,.35);
+    font-family:var(--font-mono); font-size:13px; box-shadow:0 12px 30px rgba(0,0,0,.35);
     animation:fadeUp .25s ease; max-width:320px; }
 
   /* ACCESS DENIED */
   .access-denied { display:flex; flex-direction:column; align-items:center; justify-content:center;
     height:60vh; gap:16px; text-align:center; }
-  .ad-icon  { font-size:48px; }
-  .ad-title { font-family:var(--font-mono); font-size:18px; color:var(--red); letter-spacing:2px; }
-  .ad-sub   { font-size:13px; color:var(--dim); }
+  .ad-icon  { font-size:49px; }
+  .ad-title { font-family:var(--font-mono); font-size:19px; color:var(--red); letter-spacing:2px; }
+  .ad-sub   { font-size:14px; color:var(--dim); }
 
   /* STATUS BAR */
   .status-bar { display:grid; grid-template-columns:repeat(5,1fr); gap:10px;
     background:var(--surface); border:1px solid var(--border);
     border-radius:10px; padding:14px; margin-bottom:16px; }
-  .si-label { font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--dim);
+  .si-label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--dim);
     font-family:var(--font-mono); margin-bottom:4px; }
-  .si-val   { font-family:var(--font-mono); font-size:14px; font-weight:700; }
-  .si-sub   { font-size:10px; color:var(--dim); margin-top:3px; }
+  .si-val   { font-family:var(--font-mono); font-size:15px; font-weight:700; }
+  .si-sub   { font-size:11px; color:var(--dim); margin-top:3px; }
 
   /* METRICS */
   .metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
@@ -308,11 +308,11 @@ const css = `
   .mc2::before { background:linear-gradient(90deg,#2DD4BF,#6EE7B7); }
   .mc3::before { background:linear-gradient(90deg,#FCD34D,#FB923C); }
   .mc4::before { background:linear-gradient(90deg,#F87171,#F472B6); }
-  .mc-lbl { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim);
+  .mc-lbl { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim);
     font-family:var(--font-mono); margin-bottom:9px; }
-  .mc-val { font-family:var(--font-mono); font-size:28px; font-weight:700; line-height:1; }
-  .mc-sub { font-size:11px; color:var(--dim); margin-top:7px; }
-  .badge { display:inline-flex; align-items:center; gap:3px; font-size:10px;
+  .mc-val { font-family:var(--font-mono); font-size:29px; font-weight:700; line-height:1; }
+  .mc-sub { font-size:12px; color:var(--dim); margin-top:7px; }
+  .badge { display:inline-flex; align-items:center; gap:3px; font-size:11px;
     padding:2px 7px; border-radius:4px; font-family:var(--font-mono); }
   .bg { background:rgba(16,185,129,.12); color:var(--accent); }
   .br { background:rgba(248,113,113,.12); color:var(--red); }
@@ -322,7 +322,7 @@ const css = `
   .charts-row { display:grid; grid-template-columns:1fr 260px; gap:12px; margin-bottom:16px; }
   .cc { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; }
   .cc-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
-  .cc-title { font-family:var(--font-mono); font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
+  .cc-title { font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
   .cc-canvas { width:100%; height:145px; }
   .donut-ring { width:90px; height:90px; margin:0 auto 12px; }
   svg.donut { transform:rotate(-90deg); }
@@ -335,15 +335,15 @@ const css = `
   .tcard.firing  { border-color:var(--accent); animation:glow .6s infinite; }
   .tcard.d-armed { border-color:rgba(248,113,113,.3); background:rgba(248,113,113,.04); }
   .tcard.d-fire  { border-color:var(--red); animation:redGlow .4s infinite; }
-  .t-icon { font-size:24px; margin-bottom:8px; display:block; }
-  .t-name { font-size:13px; font-weight:600; color:var(--text); margin-bottom:2px; }
-  .t-desc { font-size:10px; color:var(--dim); font-family:var(--font-mono); margin-bottom:12px; }
-  .chip { display:inline-flex; align-items:center; gap:3px; font-size:9px;
+  .t-icon { font-size:25px; margin-bottom:8px; display:block; }
+  .t-name { font-size:14px; font-weight:600; color:var(--text); margin-bottom:2px; }
+  .t-desc { font-size:11px; color:var(--dim); font-family:var(--font-mono); margin-bottom:12px; }
+  .chip { display:inline-flex; align-items:center; gap:3px; font-size:10px;
     padding:2px 7px; border-radius:10px; font-family:var(--font-mono); margin-bottom:8px; }
   .chip-auto { background:rgba(251,146,60,.1); color:var(--orange); border:1px solid rgba(251,146,60,.2); }
   .chip-rpi  { background:rgba(45,212,191,.1); color:var(--teal);   border:1px solid rgba(45,212,191,.2); }
   .trow { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-  .tlbl { font-size:11px; color:var(--dim); }
+  .tlbl { font-size:12px; color:var(--dim); }
   .tog { width:35px; height:18px; border-radius:9px; border:1px solid var(--muted);
     background:var(--panel); cursor:pointer; position:relative; transition:all .2s; }
   .tog.on  { background:var(--accent); border-color:var(--accent); box-shadow:0 0 8px rgba(16,185,129,.5); }
@@ -352,7 +352,7 @@ const css = `
     border-radius:50%; background:#fff; transition:transform .2s; }
   .tog.on::after { transform:translateX(16px); }
   .tbtn { width:100%; padding:7px; border-radius:6px; border:1px solid var(--muted);
-    background:transparent; color:var(--dim); font-size:11px; cursor:pointer;
+    background:transparent; color:var(--dim); font-size:12px; cursor:pointer;
     font-family:var(--font-mono); transition:all .15s; }
   .tbtn:hover { background:var(--panel); color:var(--text); }
   .tbtn.ac  { border-color:var(--accent); color:var(--accent); }
@@ -360,12 +360,12 @@ const css = `
   .tbtn.rd  { border-color:var(--red); color:var(--red); }
   .tbtn.rd:hover { background:rgba(248,113,113,.1); }
   .tbtn.now { background:rgba(16,185,129,.18); color:var(--accent); border-color:var(--accent); animation:flash .4s infinite; }
-  .tlast { font-size:10px; color:var(--dim); font-family:var(--font-mono); margin-top:7px; }
+  .tlast { font-size:11px; color:var(--dim); font-family:var(--font-mono); margin-top:7px; }
 
   /* TABS (Activity: Log / Photos) */
   .tabbar { display:flex; gap:6px; margin-bottom:14px; }
   .tabbtn { padding:8px 18px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
-    color:var(--dim); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:6px; }
+    color:var(--dim); font-size:14px; font-weight:600; cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:6px; }
   .tabbtn.active { background:rgba(16,185,129,.1); color:var(--accent); border-color:rgba(16,185,129,.3); }
   .tabbtn:hover:not(.active) { background:var(--panel); color:var(--text); }
 
@@ -373,40 +373,40 @@ const css = `
   .lcard { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; }
   .lhdr  { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
   .lsearch { padding:6px 11px; border-radius:6px; border:1px solid var(--border);
-    background:var(--panel); color:var(--text); font-size:12px; outline:none;
+    background:var(--panel); color:var(--text); font-size:13px; outline:none;
     font-family:var(--font-body); width:180px; }
   .lsearch:focus { border-color:var(--accent); }
   .lfilters { display:flex; gap:5px; flex-wrap:wrap; }
   .fb { padding:4px 9px; border-radius:5px; border:1px solid var(--border);
-    background:transparent; color:var(--dim); font-size:10px; cursor:pointer;
+    background:transparent; color:var(--dim); font-size:11px; cursor:pointer;
     font-family:var(--font-mono); transition:all .15s; }
   .fb:hover,.fb.on { background:var(--panel); color:var(--text); border-color:var(--muted); }
   .ltable { width:100%; border-collapse:collapse; }
-  .ltable th { text-align:left; font-size:9px; letter-spacing:2px; text-transform:uppercase;
+  .ltable th { text-align:left; font-size:10px; letter-spacing:2px; text-transform:uppercase;
     color:var(--dim); padding:7px 9px; border-bottom:1px solid var(--border); font-family:var(--font-mono); }
-  .ltable td { padding:9px; font-size:12px; border-bottom:1px solid var(--border); }
+  .ltable td { padding:9px; font-size:13px; border-bottom:1px solid var(--border); }
   .ltable tr:last-child td { border-bottom:none; }
   .ltable tr:hover td { background:rgba(16,185,129,.03); }
-  .ts { font-family:var(--font-mono); font-size:10px; color:var(--dim); }
+  .ts { font-family:var(--font-mono); font-size:11px; color:var(--dim); }
   .tbadge { display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:4px;
-    font-size:10px; font-family:var(--font-mono); font-weight:700; }
+    font-size:11px; font-family:var(--font-mono); font-weight:700; }
   .tbl  { background:rgba(16,185,129,.1);  color:var(--accent); }
   .tba  { background:rgba(252,211,77,.1);  color:var(--yellow); }
   .tbp  { background:rgba(110,231,183,.1); color:var(--green2); }
   .tblr { background:rgba(248,113,113,.1); color:var(--red); }
   .tbd  { background:rgba(251,146,60,.1);  color:var(--orange); }
   .tbc  { background:rgba(56,189,248,.1);  color:#38BDF8; }
-  .sok  { color:var(--accent); font-size:10px; font-family:var(--font-mono); }
-  .sfail{ color:var(--red);    font-size:10px; font-family:var(--font-mono); }
-  .spending{ color:var(--yellow); font-size:10px; font-family:var(--font-mono); }
+  .sok  { color:var(--accent); font-size:11px; font-family:var(--font-mono); }
+  .sfail{ color:var(--red);    font-size:11px; font-family:var(--font-mono); }
+  .spending{ color:var(--yellow); font-size:11px; font-family:var(--font-mono); }
   .new-r td { animation:fadeIn .4s ease; }
   .rat-r td { background:rgba(248,113,113,.025); }
   .lst-r td { background:rgba(251,146,60,.025); }
   .pgbtn { padding:3px 9px; border-radius:4px; border:1px solid var(--border);
-    background:transparent; color:var(--dim); font-family:var(--font-mono); font-size:10px; cursor:pointer; }
+    background:transparent; color:var(--dim); font-family:var(--font-mono); font-size:11px; cursor:pointer; }
   .pgbtn.on { background:var(--accent); color:var(--bg); border-color:var(--accent); }
   .photo-link-btn { background:transparent; border:1px solid var(--border); color:var(--dim);
-    padding:3px 9px; border-radius:4px; font-family:var(--font-mono); font-size:9px; cursor:pointer; }
+    padding:3px 9px; border-radius:4px; font-family:var(--font-mono); font-size:10px; cursor:pointer; }
   .photo-link-btn:hover { border-color:var(--teal); color:var(--teal); }
 
   /* GALLERY */
@@ -416,22 +416,22 @@ const css = `
   .gallery-card:hover { border-color:var(--accent); transform:translateY(-2px); }
   .gallery-thumb { width:100%; aspect-ratio:4/3; display:block; background:var(--panel); object-fit:cover; }
   .gallery-meta { padding:10px 12px; }
-  .gallery-time { font-family:var(--font-mono); font-size:10px; color:var(--dim); }
-  .gallery-type { font-size:12px; font-weight:600; margin-top:3px; }
+  .gallery-time { font-family:var(--font-mono); font-size:11px; color:var(--dim); }
+  .gallery-type { font-size:13px; font-weight:600; margin-top:3px; }
   .gallery-empty { text-align:center; padding:60px 20px; color:var(--dim); background:var(--surface);
-    border:1px solid var(--border); border-radius:10px; font-size:13px; line-height:1.7; }
+    border:1px solid var(--border); border-radius:10px; font-size:14px; line-height:1.7; }
 
   /* IOT / DEVICE (within Settings) */
   .iot-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px; }
-  .iot-title { font-family:var(--font-mono); font-size:10px; letter-spacing:2px;
+  .iot-title { font-family:var(--font-mono); font-size:11px; letter-spacing:2px;
     text-transform:uppercase; color:var(--dim); margin-bottom:14px; }
   .input-iot { padding:8px 12px; border-radius:6px; border:1px solid var(--border);
-    background:var(--panel); color:var(--text); font-size:13px; font-family:var(--font-mono);
+    background:var(--panel); color:var(--text); font-size:14px; font-family:var(--font-mono);
     outline:none; flex:1; min-width:180px; }
   .input-iot:focus { border-color:var(--accent); }
   .input-iot:disabled { opacity:.5; cursor:not-allowed; }
   .iot-btn { padding:9px 18px; border-radius:6px; border:1px solid; font-family:var(--font-body);
-    font-weight:600; font-size:13px; cursor:pointer; transition:all .15s; }
+    font-weight:600; font-size:14px; cursor:pointer; transition:all .15s; }
   .iot-btn.prim { border-color:var(--accent); color:var(--accent); background:rgba(16,185,129,.08); }
   .iot-btn.prim:hover { background:rgba(16,185,129,.18); }
   .iot-btn.ghost { border-color:var(--border); color:var(--dim); background:transparent; }
@@ -439,43 +439,44 @@ const css = `
   .iot-btn:disabled { opacity:.4; cursor:not-allowed; }
   .locked-banner { display:flex; align-items:center; gap:10px; padding:12px 16px; border-radius:8px;
     background:rgba(252,211,77,.08); border:1px solid rgba(252,211,77,.25); color:var(--yellow);
-    font-size:13px; margin-bottom:14px; }
+    font-size:14px; margin-bottom:14px; }
   .owner-pill { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:6px;
     background:rgba(16,185,129,.08); border:1px solid rgba(16,185,129,.25); color:var(--accent);
-    font-family:var(--font-mono); font-size:12px; }
+    font-family:var(--font-mono); font-size:13px; }
   .setup-wizard { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:14px; }
   .setup-step { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; position:relative; }
   .setup-step.done { border-color:rgba(16,185,129,.35); background:rgba(16,185,129,.03); }
   .setup-step-num { width:24px; height:24px; border-radius:50%; background:var(--panel); border:1px solid var(--border);
-    display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:700; font-size:11px; color:var(--dim); margin-bottom:8px; }
+    display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:700; font-size:12px; color:var(--dim); margin-bottom:8px; }
   .setup-step.done .setup-step-num { background:var(--accent); border-color:var(--accent); color:var(--bg); }
-  .setup-step-title { font-size:12px; font-weight:700; margin-bottom:4px; }
-  .setup-step-desc { font-size:10px; color:var(--dim); line-height:1.5; }
+  .setup-step-title { font-size:13px; font-weight:700; margin-bottom:4px; }
+  .setup-step-desc { font-size:11px; color:var(--dim); line-height:1.5; }
   .command-box { background:var(--panel); border:1px solid var(--border); border-radius:8px;
-    padding:14px 16px; font-family:var(--font-mono); font-size:12px; color:var(--accent);
+    padding:14px 16px; font-family:var(--font-mono); font-size:13px; color:var(--accent);
     display:flex; align-items:center; justify-content:space-between; gap:10px; overflow-x:auto; }
   .copy-btn { flex-shrink:0; padding:5px 12px; border-radius:5px; background:transparent;
-    border:1px solid var(--border); color:var(--dim); cursor:pointer; font-family:var(--font-mono); font-size:10px; }
+    border:1px solid var(--border); color:var(--dim); cursor:pointer; font-family:var(--font-mono); font-size:11px; }
   .copy-btn:hover { border-color:var(--accent); color:var(--accent); }
   .pin-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:4px; }
   .pin-item { background:var(--panel); border-radius:7px; padding:12px;
     border:1px solid var(--border); text-align:center; }
-  .pin-num  { font-family:var(--font-mono); font-size:17px; font-weight:700; }
-  .pin-name { font-size:11px; color:var(--dim); margin-top:3px; }
+  .pin-num  { font-family:var(--font-mono); font-size:18px; font-weight:700; }
+  .pin-name { font-size:12px; color:var(--dim); margin-top:3px; }
 
   /* SETTINGS */
   .sg { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .sg-col { display:flex; flex-direction:column; gap:14px; width:100%; }
   .scard { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px; }
   .scard.full { grid-column:span 2; }
-  .sc-title { font-family:var(--font-mono); font-size:10px; letter-spacing:2px;
+  .sc-title { font-family:var(--font-mono); font-size:11px; letter-spacing:2px;
     text-transform:uppercase; color:var(--dim); margin-bottom:14px; }
   .srow { display:flex; align-items:center; justify-content:space-between;
     padding:9px 0; border-bottom:1px solid var(--border); }
   .srow:last-child { border-bottom:none; }
-  .sn { font-size:13px; font-weight:500; }
-  .sd { font-size:11px; color:var(--dim); margin-top:2px; }
+  .sn { font-size:14px; font-weight:500; }
+  .sd { font-size:12px; color:var(--dim); margin-top:2px; }
   .sin { padding:5px 9px; border-radius:5px; border:1px solid var(--border);
-    background:var(--panel); color:var(--text); font-size:12px; font-family:var(--font-mono);
+    background:var(--panel); color:var(--text); font-size:13px; font-family:var(--font-mono);
     outline:none; width:70px; text-align:right; }
   .sin:focus { border-color:var(--accent); }
 
@@ -484,14 +485,14 @@ const css = `
   .acct-add-form { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px;
     display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px; }
   .af-field { display:flex; flex-direction:column; gap:5px; }
-  .af-lbl { font-size:10px; color:var(--dim); font-family:var(--font-mono); letter-spacing:1px; }
+  .af-lbl { font-size:11px; color:var(--dim); font-family:var(--font-mono); letter-spacing:1px; }
   .af-in { padding:8px 11px; border-radius:6px; border:1px solid var(--border); background:var(--panel);
-    color:var(--text); font-size:13px; outline:none; width:150px; }
+    color:var(--text); font-size:14px; outline:none; width:150px; }
   .af-in:focus { border-color:var(--accent); }
   .af-sel { padding:8px 11px; border-radius:6px; border:1px solid var(--border); background:var(--panel);
-    color:var(--text); font-size:13px; outline:none; cursor:pointer; }
+    color:var(--text); font-size:14px; outline:none; cursor:pointer; }
   .af-btn { padding:9px 20px; border-radius:6px; border:1px solid var(--accent); background:rgba(16,185,129,.1);
-    color:var(--accent); font-weight:600; font-size:13px; cursor:pointer; transition:all .15s; }
+    color:var(--accent); font-weight:600; font-size:14px; cursor:pointer; transition:all .15s; }
   .af-btn:hover { background:rgba(16,185,129,.2); }
   .acct-list { display:flex; flex-direction:column; gap:10px; }
   .acct-row { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px;
@@ -500,50 +501,50 @@ const css = `
   .acct-avatar { width:38px; height:38px; border-radius:50%; background:rgba(16,185,129,.12);
     display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--accent); flex-shrink:0; }
   .acct-info { flex:1; min-width:140px; }
-  .acct-name { font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px; }
-  .acct-meta { font-size:11px; color:var(--dim); font-family:var(--font-mono); margin-top:2px; }
-  .acct-stats { display:flex; gap:14px; font-size:11px; color:var(--dim); font-family:var(--font-mono); }
+  .acct-name { font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .acct-meta { font-size:12px; color:var(--dim); font-family:var(--font-mono); margin-top:2px; }
+  .acct-stats { display:flex; gap:14px; font-size:12px; color:var(--dim); font-family:var(--font-mono); }
   .acct-stats b { color:var(--text); }
   .acct-actions { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
   .role-sel { padding:5px 9px; border-radius:5px; border:1px solid var(--border); background:var(--panel);
-    color:var(--text); font-size:11px; font-family:var(--font-mono); cursor:pointer; }
-  .status-pill { font-size:10px; font-family:var(--font-mono); padding:3px 9px; border-radius:10px; font-weight:700; }
+    color:var(--text); font-size:12px; font-family:var(--font-mono); cursor:pointer; }
+  .status-pill { font-size:11px; font-family:var(--font-mono); padding:3px 9px; border-radius:10px; font-weight:700; }
   .status-pill.active { background:rgba(16,185,129,.12); color:var(--accent); }
   .status-pill.inactive { background:rgba(248,113,113,.12); color:var(--red); }
   .deact-btn { padding:6px 12px; border-radius:5px; border:1px solid var(--border); background:transparent;
-    color:var(--dim); font-size:11px; cursor:pointer; font-family:var(--font-mono); }
+    color:var(--dim); font-size:12px; cursor:pointer; font-family:var(--font-mono); }
   .deact-btn:hover { border-color:var(--red); color:var(--red); }
   .react-btn { padding:6px 12px; border-radius:5px; border:1px solid var(--accent); background:rgba(16,185,129,.08);
-    color:var(--accent); font-size:11px; cursor:pointer; font-family:var(--font-mono); }
+    color:var(--accent); font-size:12px; cursor:pointer; font-family:var(--font-mono); }
   .react-btn:hover { background:rgba(16,185,129,.16); }
 
   /* ANALYTICS PAGE */
   .an-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
   .an-stat { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; }
-  .an-stat-lbl { font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); font-family:var(--font-mono); margin-bottom:8px; }
-  .an-stat-val { font-family:var(--font-mono); font-size:26px; font-weight:700; }
-  .an-stat-sub { font-size:11px; color:var(--dim); margin-top:6px; }
+  .an-stat-lbl { font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); font-family:var(--font-mono); margin-bottom:8px; }
+  .an-stat-val { font-family:var(--font-mono); font-size:27px; font-weight:700; }
+  .an-stat-sub { font-size:12px; color:var(--dim); margin-top:6px; }
   .an-row { display:grid; grid-template-columns:1.4fr 1fr; gap:12px; margin-bottom:16px; }
   .conf-bars { display:flex; align-items:flex-end; gap:8px; height:120px; padding-top:10px; }
   .conf-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; justify-content:flex-end; height:100%; }
   .conf-fill { width:100%; border-radius:4px 4px 0 0; background:var(--accent); transition:height .4s ease; min-height:2px; }
-  .conf-lbl { font-size:9px; color:var(--dim); font-family:var(--font-mono); }
-  .conf-count { font-size:10px; color:var(--text); font-weight:700; }
+  .conf-lbl { font-size:10px; color:var(--dim); font-family:var(--font-mono); }
+  .conf-count { font-size:11px; color:var(--text); font-weight:700; }
   .eff-bar-track { height:14px; background:var(--panel); border-radius:7px; overflow:hidden; display:flex; margin:10px 0; }
   .eff-bar-resolved { background:var(--accent); }
   .eff-bar-escalated { background:var(--red); }
-  .eff-legend { display:flex; gap:16px; font-size:11px; color:var(--dim); flex-wrap:wrap; }
+  .eff-legend { display:flex; gap:16px; font-size:12px; color:var(--dim); flex-wrap:wrap; }
   .eff-legend b { color:var(--text); }
   .export-btn { padding:9px 18px; border-radius:6px; border:1px solid var(--accent); background:rgba(16,185,129,.1);
-    color:var(--accent); font-weight:600; font-size:13px; cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:8px; }
+    color:var(--accent); font-weight:600; font-size:14px; cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:8px; }
   .export-btn:hover { background:rgba(16,185,129,.2); }
 
   /* DAILY REPORT — card summary + weekly bar chart + horizontal distributions */
   .ds-cards { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px; }
   .ds-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px 16px; text-align:center; }
-  .ds-val { font-family:var(--font-mono); font-size:32px; font-weight:700; line-height:1; }
-  .ds-lbl { font-size:12px; color:var(--dim); margin-top:8px; }
-  .ds-trend { font-size:11px; margin-top:9px; font-family:var(--font-mono); }
+  .ds-val { font-family:var(--font-mono); font-size:33px; font-weight:700; line-height:1; }
+  .ds-lbl { font-size:13px; color:var(--dim); margin-top:8px; }
+  .ds-trend { font-size:12px; margin-top:9px; font-family:var(--font-mono); }
   .ds-trend.up { color:var(--accent); }
   .ds-trend.down { color:var(--red); }
   .ds-trend.flat { color:var(--dim); }
@@ -552,22 +553,22 @@ const css = `
   .week-col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
   .week-bar-pair { display:flex; gap:3px; align-items:flex-end; flex:1; width:100%; justify-content:center; }
   .week-bar { width:11px; border-radius:3px 3px 0 0; min-height:2px; transition:height .4s ease; }
-  .week-lbl { font-size:9px; color:var(--dim); font-family:var(--font-mono); margin-top:6px; }
+  .week-lbl { font-size:10px; color:var(--dim); font-family:var(--font-mono); margin-top:6px; }
   .hbar-list { display:flex; flex-direction:column; gap:13px; }
   .hbar-row { display:flex; align-items:center; gap:10px; }
-  .hbar-icon-lbl { width:92px; font-size:12px; color:var(--dim); display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .hbar-icon-lbl { width:92px; font-size:13px; color:var(--dim); display:flex; align-items:center; gap:6px; flex-shrink:0; }
   .hbar-track { flex:1; height:10px; background:var(--panel); border-radius:6px; overflow:hidden; }
   .hbar-fill { height:100%; border-radius:6px; transition:width .4s ease; }
-  .hbar-val { width:34px; text-align:right; font-family:var(--font-mono); font-size:11px; color:var(--text); flex-shrink:0; }
+  .hbar-val { width:34px; text-align:right; font-family:var(--font-mono); font-size:12px; color:var(--text); flex-shrink:0; }
 
   /* DEVICE REPORTS — weekly / monthly toggle */
   .dr-tabs { display:flex; gap:6px; margin-bottom:14px; }
   .dr-tab { padding:8px 18px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
-    color:var(--dim); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; }
+    color:var(--dim); font-size:14px; font-weight:600; cursor:pointer; transition:all .15s; }
   .dr-tab.active { background:rgba(16,185,129,.1); color:var(--accent); border-color:rgba(16,185,129,.3); }
   .dr-tab:hover:not(.active) { background:var(--panel); color:var(--text); }
   .dr-btn { padding:8px 16px; border-radius:8px; border:1px solid var(--border); background:var(--panel);
-    color:var(--dim); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; font-family:var(--font-body); }
+    color:var(--dim); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; font-family:var(--font-body); }
   .dr-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); background:rgba(16,185,129,.08); }
   .dr-btn:disabled { opacity:.5; cursor:not-allowed; }
 
@@ -598,9 +599,9 @@ document.head.appendChild(stEl);
 const TRIGGER_TYPES = ["lights", "audio", "pepper", "last"];
 const TYPE_META = {
   lights: { label: "Lights",     icon: "💡", cls: "tbl",  color: "#10B981" },
-  audio:  { label: "Audio",      icon: "🔊", cls: "tba",  color: "#FCD34D" },
-  pepper: { label: "Peppermint", icon: "🌿", cls: "tbp",  color: "#6EE7B7" },
-  last:   { label: "Last Resort",icon: "🚨", cls: "tblr", color: "#F87171" },
+  audio:  { label: "Ultrasonic", icon: "📡", cls: "tba",  color: "#FCD34D" },
+  pepper: { label: "Diffuser",   icon: "💨", cls: "tbp",  color: "#6EE7B7" },
+  last:   { label: "Horn",       icon: "📢", cls: "tblr", color: "#F87171" },
   capture:{ label: "Test Capture",icon: "📸", cls: "tbc", color: "#38BDF8" },
 };
 const AUTO_SEQ = ["lights", "audio", "pepper"];
@@ -661,8 +662,8 @@ function PasswordField({ value, onChange, placeholder, onKeyDown, className = "l
 function LandingPage({ onLogin, theme, onToggleTheme }) {
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = setInterval(() => setTick((v) => v + 1), 2000); return () => clearInterval(t); }, []);
-  const seq = ["LIGHTS", "AUDIO", "PEPPER", "LAST"];
-  const ai = tick % 4;
+  const seq = ["LIGHTS", "ULTRASONIC", "DIFFUSER", "HORN"];
+  const ai = [2, 0, 3, 1, 0, 2, 1, 3][tick % 8];
   return (
     <div className="landing">
       <div className="land-bg" /><div className="grid-ov" /><div className="scan-bar" />
@@ -677,7 +678,7 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
       <section className="land-hero">
         <div className="eyebrow"><span className="pdot" />IoT · YOLOv8 · Raspberry Pi</div>
         <h1 className="hero-title">Smart Rat<br /><span>Deterrence</span><br />System</h1>
-        <p className="hero-sub">Real-time detection + multi-sensory response. Lights, audio, peppermint, and adaptive trapping — with every detection captured on camera by your own Raspberry Pi.</p>
+        <p className="hero-sub">Real-time detection + multi-sensory response. Lights, ultrasonic sound, a peppermint diffuser, and a horn — with every detection captured on camera by your own Raspberry Pi.</p>
         <div className="hero-cta">
           <button className="cta-p" onClick={onLogin}>Open Dashboard</button>
         </div>
@@ -696,15 +697,15 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
             <div className="hd-stat"><div className="hd-sval" style={{ color: "var(--teal)" }}>--</div><div className="hd-slbl">Sign in to view</div></div>
           </div>
           <div className="hd-seq">
-            {seq.map((s, i) => <div key={i} className={`hd-si ${i < ai ? "a" : i === ai ? "f" : ""}`}>{s}</div>)}
+            {seq.map((s, i) => <div key={i} className={`hd-si ${i === ai ? "f" : ""}`}>{s}</div>)}
           </div>
         </div>
       </section>
       <section className="land-feats">
         {[
           { title: "YOLOv8 Detection", desc: "Computer vision model trained on rat images, running real-time inference on Raspberry Pi edge hardware." },
-          { title: "Multi-Sensory Response", desc: "Ultrasonic sound, LED strobe, and peppermint oil diffusion activate in sequence to deter rats without chemicals." },
-          { title: "Anti-Habituation Trap", desc: "Servo-controlled snap trap fires using randomized timing so rats cannot predict or adapt to the pattern." },
+          { title: "Multi-Sensory Response", desc: "Lights, ultrasonic sound, a peppermint diffuser, and a horn deter rats without chemicals, one at a time." },
+          { title: "Randomized Response", desc: "Each detection triggers a different deterrent from the last one, so rats cannot predict or adapt to the pattern." },
           { title: "Photo Capture", desc: "Every detection saves a timestamped photo from the Pi camera, viewable anytime in Activity → Photos." },
           { title: "Guided Setup", desc: "Connect your Raspberry Pi in three simple steps from Settings — no manual code editing required." },
           { title: "Reports & Analytics", desc: "Detection frequency, deterrence effectiveness, and confidence distributions — exportable for documentation." },
@@ -794,7 +795,7 @@ function LineChart({ data }) {
   const pts = (k) => data.map((d, i) => [p.l + (i / (n - 1)) * iW, p.t + iH - (d[k] / mx) * iH]);
   const path = (k) => pts(k).map((pt, i) => `${i === 0 ? "M" : "L"} ${pt[0].toFixed(1)} ${pt[1].toFixed(1)}`).join(" ");
   const area = (k) => { const pp = pts(k); return pp.map((pt, i) => `${i === 0 ? "M" : "L"} ${pt[0].toFixed(1)} ${pt[1].toFixed(1)}`).join(" ") + ` L ${(p.l + iW).toFixed(1)} ${(p.t + iH).toFixed(1)} L ${p.l.toFixed(1)} ${(p.t + iH).toFixed(1)} Z`; };
-  if (n < 2) return <div style={{ color: "var(--dim)", fontSize: 12, textAlign: "center", padding: "50px 0" }}>Not enough data yet.</div>;
+  if (n < 2) return <div style={{ color: "var(--dim)", fontSize: 13, textAlign: "center", padding: "50px 0" }}>Not enough data yet.</div>;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "100%", display: "block" }}>
       <defs>{Object.entries(TYPE_META).map(([k, m]) => (
@@ -807,7 +808,7 @@ function LineChart({ data }) {
       {Object.keys(TYPE_META).map((k) => <path key={k} d={area(k)} fill={`url(#lg${k})`} />)}
       {Object.entries(TYPE_META).map(([k, m]) => <path key={k} d={path(k)} fill="none" stroke={m.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />)}
       {[0, 4, 8, 12, 16, 20, n - 1].map((i) => (
-        <text key={i} x={p.l + (i / (n - 1)) * iW} y={H - 5} textAnchor="middle" fill="var(--dim)" fontSize="9" fontFamily="Space Mono,monospace">{data[i]?.label}</text>
+        <text key={i} x={p.l + (i / (n - 1)) * iW} y={H - 5} textAnchor="middle" fill="var(--dim)" fontSize="10" fontFamily="Space Mono,monospace">{data[i]?.label}</text>
       ))}
     </svg>
   );
@@ -827,7 +828,7 @@ function DonutChart({ totals }) {
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         {keys.map((k) => (
-          <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
+          <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
               <div style={{ width: "7px", height: "7px", borderRadius: "2px", background: TYPE_META[k].color }} />
               <span style={{ color: "var(--dim)" }}>{TYPE_META[k].label}</span>
@@ -840,15 +841,10 @@ function DonutChart({ totals }) {
   );
 }
 
-function RatAlert({ seqStep, lastNow, onDismiss }) {
-  const steps = ["LIGHTS", "AUDIO", "PEPPER"];
+function RatAlert({ onDismiss }) {
   return (
     <div className="rat-alert">
-      <div className="rat-msg">⚠ RAT DETECTED — AUTO-RESPONSE ACTIVE</div>
-      <div className="seq-row">
-        {steps.map((s, i) => <span key={i} className={`ss ${i < seqStep ? "done" : i === seqStep ? "now" : "wait"}`}>{s}</span>)}
-        <span className={`ss ${lastNow ? "last-now" : "wait"}`}>LAST RESORT</span>
-      </div>
+      <div className="rat-msg">⚠ RAT DETECTED — DETERRENT ACTIVATED</div>
       <button className="dismiss" onClick={onDismiss}>✕ CLEAR</button>
     </div>
   );
@@ -948,7 +944,7 @@ function DeviceReportsPage() {
             { label: "Account",     val: r.device_owner || "—", sub: "IoT device owner" },
             { label: "Device IP",   val: r.device_ip || "—", sub: "at time of report" },
             { label: "Period",      val: `${new Date(r.period_since).toLocaleDateString()} – ${new Date(r.period_until).toLocaleDateString()}`, sub: "7-day window" },
-            { label: "Detections",  val: r.detections_total, color: "var(--red)", sub: `${r.detections_escalated} escalated to Last Resort` },
+            { label: "Detections",  val: r.detections_total, color: "var(--red)", sub: `${r.detections_escalated} escalated to Horn` },
           ].map((s, i) => (
             <div key={i}><div className="si-label">{s.label}</div>
               <div className="si-val" style={{ color: s.color }}>{s.val}</div>
@@ -956,19 +952,19 @@ function DeviceReportsPage() {
           ))}
         </div>
         <div className="lcard" style={{ marginTop: 16 }}>
-          <div className="lhdr"><span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Activity Log — This Report's Week</span></div>
+          <div className="lhdr"><span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Activity Log — This Report's Week</span></div>
           <table className="ltable">
             <thead><tr><th>Date</th><th>Time</th><th>Type</th><th>Status</th><th>Confidence</th><th>Detail</th></tr></thead>
             <tbody>
-              {r.entries.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO ACTIVITY THIS WEEK</td></tr>}
+              {r.entries.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "12px" }}>NO ACTIVITY THIS WEEK</td></tr>}
               {r.entries.map((l) => (
                 <tr key={l.id}>
                   <td><span className="ts">{l.dateStr}</span></td>
                   <td><span className="ts">{l.tsStr}</span></td>
-                  <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
+                  <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
                   <td>{statusBadge(l.status)}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.confidence != null ? Math.round(l.confidence * 100) + "%" : "—"}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
+                  <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.confidence != null ? Math.round(l.confidence * 100) + "%" : "—"}</td>
+                  <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
                 </tr>
               ))}
             </tbody>
@@ -1014,7 +1010,7 @@ function DeviceReportsPage() {
         {[
           { label: "Report Type", val: range === "weekly" ? "WEEKLY" : "MONTHLY", color: "var(--accent)", sub: range === "weekly" ? "7-day snapshots" : "grouped by month" },
           { label: "Total Detections", val: totalDetections, color: "var(--red)", sub: "across all periods" },
-          { label: "Escalated", val: totalEscalated, color: "var(--orange)", sub: "to Last Resort" },
+          { label: "Escalated", val: totalEscalated, color: "var(--orange)", sub: "to Horn" },
           { label: "Devices", val: uniqueDevices, color: "var(--teal)", sub: "reporting accounts" },
           { label: "Last Generated", val: lastGenerated ? new Date(lastGenerated).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "--:--", color: "var(--accent)", sub: lastGenerated ? new Date(lastGenerated).toLocaleDateString() : "no reports yet" },
         ].map((s, i) => (
@@ -1029,7 +1025,7 @@ function DeviceReportsPage() {
           { cls: "mc1", label: "Reports", val: totalReports, sub: <span className="badge bg">stored snapshots</span> },
           { cls: "mc2", label: "Resolution Rate", val: `${resolvedPct}%`, sub: <span style={{ color: "var(--teal)" }}>without escalation</span> },
           { cls: "mc3", label: "Avg / Report", val: avgPerReport, sub: "detections" },
-          { cls: "mc4", label: "Escalated", val: totalEscalated, sub: <span className="badge br">to Last Resort</span> },
+          { cls: "mc4", label: "Escalated", val: totalEscalated, sub: <span className="badge br">to Horn</span> },
         ].map((m, i) => (
           <div key={i} className={`mc ${m.cls}`}>
             <div className="mc-lbl">{m.label}</div>
@@ -1044,12 +1040,12 @@ function DeviceReportsPage() {
           <div className="cc-hdr">
             <span className="cc-title">Detections — Recent {range === "weekly" ? "Weeks" : "Months"}</span>
             <div style={{ display: "flex", gap: "12px" }}>
-              <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--red)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--red)", display: "inline-block" }} />Detections</span>
-              <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--orange)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--orange)", display: "inline-block" }} />Escalated</span>
+              <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--red)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--red)", display: "inline-block" }} />Detections</span>
+              <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--orange)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--orange)", display: "inline-block" }} />Escalated</span>
             </div>
           </div>
           {chartRows.length === 0 ? (
-            <div style={{ color: "var(--dim)", fontSize: 12, textAlign: "center", padding: "50px 0" }}>Not enough data yet.</div>
+            <div style={{ color: "var(--dim)", fontSize: 13, textAlign: "center", padding: "50px 0" }}>Not enough data yet.</div>
           ) : (
             <div className="week-bars">
               {chartRows.map((r, i) => (
@@ -1074,19 +1070,19 @@ function DeviceReportsPage() {
 
       <div className="lcard">
         <div className="lhdr" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>{range === "weekly" ? "Weekly Device Reports" : "Monthly Device Reports"}</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>{range === "weekly" ? "Weekly Device Reports" : "Monthly Device Reports"}</span>
           {range === "weekly" && <button className="dr-btn" onClick={generateNow} disabled={generating}>{generating ? "Generating…" : "+ Generate now (test)"}</button>}
         </div>
         {range === "weekly" ? (
           <table className="ltable">
             <thead><tr><th>Account</th><th>Device</th><th>Period</th><th>Generated</th><th /></tr></thead>
             <tbody>
-              {reports.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO REPORTS YET — FIRST ONE GENERATES SUNDAY AT MIDNIGHT</td></tr>}
+              {reports.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "12px" }}>NO REPORTS YET — FIRST ONE GENERATES SUNDAY AT MIDNIGHT</td></tr>}
               {reports.map((r) => (
                 <tr key={r.id}>
                   <td>{r.device_owner || "—"}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{new Date(r.period_since).toLocaleDateString()} – {new Date(r.period_until).toLocaleDateString()}</td>
+                  <td style={{ fontSize: "12px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
+                  <td style={{ fontSize: "12px", color: "var(--dim)" }}>{new Date(r.period_since).toLocaleDateString()} – {new Date(r.period_until).toLocaleDateString()}</td>
                   <td><span className="ts">{new Date(r.generated_at).toLocaleString()}</span></td>
                   <td><button className="dr-btn" onClick={() => openDetail(r.id)}>View Details →</button></td>
                 </tr>
@@ -1097,12 +1093,12 @@ function DeviceReportsPage() {
           <table className="ltable">
             <thead><tr><th>Account</th><th>Device</th><th>Month</th><th>Detections</th><th>Escalated</th><th>Last Seen</th></tr></thead>
             <tbody>
-              {monthlyRows.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO MONTHLY DATA YET — ACCUMULATES FROM WEEKLY REPORTS</td></tr>}
+              {monthlyRows.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "12px" }}>NO MONTHLY DATA YET — ACCUMULATES FROM WEEKLY REPORTS</td></tr>}
               {monthlyRows.map((r) => (
                 <tr key={r.key}>
                   <td>{r.device_owner || "—"}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
-                  <td style={{ fontSize: "11px", color: "var(--dim)" }}>{r.monthLabel}</td>
+                  <td style={{ fontSize: "12px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
+                  <td style={{ fontSize: "12px", color: "var(--dim)" }}>{r.monthLabel}</td>
                   <td style={{ color: "var(--red)", fontWeight: 700 }}>{r.detections_total}</td>
                   <td style={{ color: "var(--orange)" }}>{r.detections_escalated}</td>
                   <td><span className="ts">{new Date(r.lastSeen).toLocaleString()}</span></td>
@@ -1132,14 +1128,14 @@ function ReportsDonut({ resolved, escalated }) {
         </svg>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
             <div style={{ width: "7px", height: "7px", borderRadius: "2px", background: "var(--accent)" }} />
             <span style={{ color: "var(--dim)" }}>Resolved</span>
           </div>
           <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>{resolved}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
             <div style={{ width: "7px", height: "7px", borderRadius: "2px", background: "var(--red)" }} />
             <span style={{ color: "var(--dim)" }}>Escalated</span>
@@ -1178,7 +1174,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
         ].map((m, i) => (
           <div key={i} className={`mc ${m.cls}`}>
             <div className="mc-lbl">{m.label}</div>
-            <div className="mc-val" style={{ fontSize: m.sm ? "17px" : undefined }}>{m.val}</div>
+            <div className="mc-val" style={{ fontSize: m.sm ? "18px" : undefined }}>{m.val}</div>
             <div className="mc-sub">{m.sub}</div>
           </div>
         ))}
@@ -1189,7 +1185,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
             <span className="cc-title">Trigger Frequency — Last 24h</span>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               {Object.entries(TYPE_META).map(([k, m]) => (
-                <span key={k} style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: m.color, display: "flex", alignItems: "center", gap: "3px" }}>
+               <span key={k} className={`tbadge ${m.cls}`}>
                   <span style={{ width: 7, height: 2, background: m.color, display: "inline-block", borderRadius: 1 }} />{m.label}
                 </span>
               ))}
@@ -1200,18 +1196,18 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
         <div className="cc"><div className="cc-hdr"><span className="cc-title">Distribution</span></div><DonutChart totals={counts} /></div>
       </div>
       <div className="lcard">
-        <div className="lhdr"><span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Recent Activity</span></div>
+        <div className="lhdr"><span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Recent Activity</span></div>
         <table className="ltable">
           <thead><tr><th>Time</th><th>Type</th><th>By</th><th>Status</th><th>Detail</th></tr></thead>
           <tbody>
-            {logs.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO ACTIVITY YET — WAITING ON THE PI</td></tr>}
+            {logs.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "12px" }}>NO ACTIVITY YET — WAITING ON THE PI</td></tr>}
             {logs.slice(0, 8).map((l, i) => (
               <tr key={l.id} className={`${i === 0 ? "new-r" : ""} ${l.isRat ? "rat-r" : ""} ${l.isLast ? "lst-r" : ""}`}>
                 <td><span className="ts">{l.dateStr} {l.tsStr}</span></td>
-                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
-                <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.user}</td>
+                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
+                <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.user}</td>
                 <td>{statusBadge(l.status)}</td>
-                <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
+                <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
               </tr>
             ))}
           </tbody>
@@ -1224,24 +1220,24 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
 function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, notice }) {
   const types = [
     { key: "lights", name: "Lights",      desc: "Strobe / illuminate", danger: false },
-    { key: "audio",  name: "Audio Alert", desc: "Broadcast alarm",     danger: false },
-    { key: "pepper", name: "Peppermint",  desc: "Trigger spray",       danger: false },
-    { key: "last",   name: "Last Resort", desc: "Auto if rat stays",   danger: true },
+    { key: "audio",  name: "Ultrasonic",  desc: "Ultrasonic emitter",  danger: false },
+    { key: "pepper", name: "Diffuser",    desc: "Release scent",       danger: false },
+    { key: "last",   name: "Horn",        desc: "Alarm horn",          danger: false },
   ];
   const lastFor = (k) => logs.find((l) => l.type === k && !l.isRat);
   return (
     <>
       <div style={{ marginBottom: "16px", padding: "12px 16px", background: "rgba(16,185,129,.06)", border: "1px solid rgba(16,185,129,.18)", borderRadius: "8px" }}>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--accent)", marginBottom: "3px", letterSpacing: "1px" }}>AUTO-RESPONSE SEQUENCE</div>
-        <div style={{ fontSize: "12px", color: "var(--dim)" }}>Triggers fire automatically when the Pi confirms a rat: Lights → Audio → Peppermint → Last Resort. You can also arm/disarm and test-fire manually — the Pi is the one that actually performs the action and acknowledges it back here.</div>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--accent)", marginBottom: "3px", letterSpacing: "1px" }}>AUTOMATIC RESPONSE</div>
+        <div style={{ fontSize: "13px", color: "var(--dim)" }}>When the Pi confirms a rat, it picks one deterrent (Lights, Ultrasonic, Diffuser or Horn), a different one each time. You can also test-fire any armed deterrent manually — the Pi is the one that actually performs the action and acknowledges it back here.</div>
       </div>
       {!rpiConnected && (
-        <div style={{ marginBottom: 16, padding: "10px 16px", background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.2)", borderRadius: 8, color: "var(--red)", fontSize: 12, fontFamily: "var(--font-mono)" }}>
+        <div style={{ marginBottom: 16, padding: "10px 16px", background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.2)", borderRadius: 8, color: "var(--red)", fontSize: 13, fontFamily: "var(--font-mono)" }}>
           Pi is offline — test-fires will be queued but won't run until it reconnects.
         </div>
       )}
       {notice && (
-        <div style={{ marginBottom: 16, padding: "10px 16px", background: "rgba(252,211,77,.08)", border: "1px solid rgba(252,211,77,.25)", borderRadius: 8, color: "var(--yellow)", fontSize: 12, fontFamily: "var(--font-mono)" }}>
+        <div style={{ marginBottom: 16, padding: "10px 16px", background: "rgba(252,211,77,.08)", border: "1px solid rgba(252,211,77,.25)", borderRadius: 8, color: "var(--yellow)", fontSize: 13, fontFamily: "var(--font-mono)" }}>
           {notice}
         </div>
       )}
@@ -1255,7 +1251,7 @@ function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, 
               <div className="t-desc">{t.desc}</div>
               <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginBottom: "10px" }}>
                 <span className="chip chip-auto">AUTO</span>
-                {rpiConnected && <span className="chip chip-rpi">GPIO</span>}
+                {rpiConnected && <span className="chip chip-rpi">PI</span>}
               </div>
               <div className="trow">
                 <span className="tlbl">Armed</span>
@@ -1292,7 +1288,7 @@ function ActivityLogTable({ logs, onViewPhoto }) {
   return (
     <div className="lcard">
       <div className="lhdr">
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Activity Log <span style={{ color: "var(--accent)", marginLeft: 6 }}>{filtered.length}</span></span>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Activity Log <span style={{ color: "var(--accent)", marginLeft: 6 }}>{filtered.length}</span></span>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
           <input className="lsearch" placeholder="Search…" value={search} onChange={(e) => { setSearch(e.target.value); setPg(0); }} />
           <div className="lfilters">
@@ -1312,14 +1308,14 @@ function ActivityLogTable({ logs, onViewPhoto }) {
               <tr key={l.id} className={`${i === 0 && pg === 0 ? "new-r" : ""} ${l.isRat ? "rat-r" : ""} ${l.isLast ? "lst-r" : ""}`}>
                 <td><span className="ts">{l.dateStr}</span></td>
                 <td><span className="ts">{l.tsStr}</span></td>
-                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">LAST</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
-                <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.user}</td>
+                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
+                <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.user}</td>
                 <td>{statusBadge(l.status)}</td>
-                <td style={{ fontSize: "11px", color: "var(--dim)" }}>{l.detail}</td>
-                <td>{l.photoId ? <button className="photo-link-btn" onClick={() => onViewPhoto && onViewPhoto(l.photoId)}>View</button> : <span style={{ color: "var(--muted)", fontSize: "10px" }}>—</span>}</td>
+                <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
+                <td>{l.photoId ? <button className="photo-link-btn" onClick={() => onViewPhoto && onViewPhoto(l.photoId)}>View</button> : <span style={{ color: "var(--muted)", fontSize: "11px" }}>—</span>}</td>
               </tr>
             ))}
-            {visible.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "11px" }}>NO RESULTS FOUND</td></tr>}
+            {visible.length === 0 && <tr><td colSpan={7} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "12px" }}>NO RESULTS FOUND</td></tr>}
           </tbody>
         </table>
       </div>
@@ -1333,7 +1329,7 @@ function PhotoGallery({ photos }) {
   return (
     <>
       <div className="gallery-toolbar">
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Captured Photos <span style={{ color: "var(--accent)", marginLeft: 6 }}>{photos.length}</span></span>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Captured Photos <span style={{ color: "var(--accent)", marginLeft: 6 }}>{photos.length}</span></span>
       </div>
       {photos.length === 0 ? (
         <div className="gallery-empty">No photos captured yet.<br />Photos are saved automatically whenever the Pi detects a rat.</div>
@@ -1401,7 +1397,7 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
   return (
     <>
       <div className="acct-toolbar">
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Accounts <span style={{ color: "var(--accent)", marginLeft: 6 }}>{accounts.length}</span></span>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Accounts <span style={{ color: "var(--accent)", marginLeft: 6 }}>{accounts.length}</span></span>
       </div>
 
       <div className="acct-add-form">
@@ -1416,17 +1412,17 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
           </select>
         </div>
         <button className="af-btn" onClick={addAccount} disabled={busy}>{busy ? "Creating…" : "+ Create Account"}</button>
-        {err && <span style={{ color: "var(--red)", fontSize: "12px", fontFamily: "var(--font-mono)" }}>{err}</span>}
+        {err && <span style={{ color: "var(--red)", fontSize: "13px", fontFamily: "var(--font-mono)" }}>{err}</span>}
       </div>
 
-      {loading && <div style={{ color: "var(--dim)", fontSize: 12, fontFamily: "var(--font-mono)" }}>Loading accounts…</div>}
+      {loading && <div style={{ color: "var(--dim)", fontSize: 13, fontFamily: "var(--font-mono)" }}>Loading accounts…</div>}
 
       <div className="acct-list">
         {accounts.map((acc) => (
           <div key={acc.username} className={`acct-row ${acc.active ? "" : "inactive"}`}>
             <div className="acct-avatar">{acc.username[0].toUpperCase()}</div>
             <div className="acct-info">
-              <div className="acct-name">{acc.username} {acc.username === currentUser && <span style={{ fontSize: 10, color: "var(--dim)", fontWeight: 400 }}>(you)</span>}
+              <div className="acct-name">{acc.username} {acc.username === currentUser && <span style={{ fontSize: 11, color: "var(--dim)", fontWeight: 400 }}>(you)</span>}
                 <span className={`status-pill ${acc.active ? "active" : "inactive"}`}>{acc.active ? "ACTIVE" : "DEACTIVATED"}</span>
               </div>
               <div className="acct-meta">Created {new Date(acc.createdAt).toLocaleDateString()}</div>
@@ -1528,7 +1524,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
     URL.revokeObjectURL(url);
   }
   function exportDailyReport() {
-    const rows = [["Date", "Detections", "Resolved", "Escalated", "Resolution Rate", "Avg Confidence", "Lights", "Audio", "Pepper", "Last Resort"]];
+    const rows = [["Date", "Detections", "Resolved", "Escalated", "Resolution Rate", "Avg Confidence", "Lights", "Ultrasonic", "Diffuser", "Horn"]];
     Array.from(dayMap.values()).sort((a, b) => b.dateObj - a.dateObj).forEach((d) => {
       const resolved = Math.max(d.detections - d.escalated, 0);
       const total = resolved + d.escalated || 1;
@@ -1545,7 +1541,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
   return (
     <>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Detection Reports & Analytics</span>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Detection Reports & Analytics</span>
         <button className="export-btn" onClick={exportReport}>Export Report (CSV)</button>
       </div>
 
@@ -1564,7 +1560,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
         <div className="cc">
           <div className="cc-hdr"><span className="cc-title">Confidence Score Distribution</span></div>
           {confLogs.length === 0 ? (
-            <div style={{ color: "var(--dim)", fontSize: 12, textAlign: "center", padding: "30px 0" }}>No detection confidence data yet.</div>
+            <div style={{ color: "var(--dim)", fontSize: 13, textAlign: "center", padding: "30px 0" }}>No detection confidence data yet.</div>
           ) : (
             <div className="conf-bars">
               {buckets.map((v, i) => (
@@ -1586,15 +1582,15 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
           <div className="eff-bar-escalated" style={{ width: `${escalatedPct}%` }} />
         </div>
         <div className="eff-legend">
-          <span><b style={{ color: "var(--accent)" }}>■</b> Resolved by Lights/Audio/Peppermint: <b>{resolvedPct}%</b> ({resolved} events)</span>
-          <span><b style={{ color: "var(--red)" }}>■</b> Escalated to Last Resort: <b>{escalatedPct}%</b> ({escalated} events)</span>
+          <span><b style={{ color: "var(--accent)" }}>■</b> Resolved by Lights/Ultrasonic/Diffuser: <b>{resolvedPct}%</b> ({resolved} events)</span>
+          <span><b style={{ color: "var(--red)" }}>■</b> Escalated to Horn: <b>{escalatedPct}%</b> ({escalated} events)</span>
         </div>
       </div>
 
       <div className="cc" style={{ marginBottom: 16 }}><div className="cc-hdr"><span className="cc-title">Trigger Type Distribution</span></div><DonutChart totals={counts} /></div>
 
       <div className="lhdr" style={{ marginBottom: 14 }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Daily Report <span style={{ color: "var(--accent)", marginLeft: 6 }}>This Week (Mon–Sun)</span></span>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--dim)" }}>Daily Report <span style={{ color: "var(--accent)", marginLeft: 6 }}>This Week (Mon–Sun)</span></span>
         <button className="export-btn" onClick={exportDailyReport}>Export Daily Report (CSV)</button>
       </div>
 
@@ -1627,8 +1623,8 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
           <div className="cc-hdr">
             <span className="cc-title">Detection Frequency — This Week (Mon–Sun)</span>
             <div style={{ display: "flex", gap: "12px" }}>
-              <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--red)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--red)", display: "inline-block" }} />Detections</span>
-              <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--teal)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--teal)", display: "inline-block" }} />Deterred</span>
+              <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--red)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--red)", display: "inline-block" }} />Detections</span>
+              <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--teal)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--teal)", display: "inline-block" }} />Deterred</span>
             </div>
           </div>
           <div className="week-bars">
@@ -1648,9 +1644,9 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
           <div className="hbar-list">
             {[
               { label: "Lights", val: wk.lights, color: TYPE_META.lights.color },
-              { label: "Audio",  val: wk.audio,  color: TYPE_META.audio.color },
-              { label: "Pepper", val: wk.pepper, color: TYPE_META.pepper.color },
-              { label: "Last",   val: wk.last,   color: TYPE_META.last.color },
+              { label: "Ultrasonic", val: wk.audio,  color: TYPE_META.audio.color },
+              { label: "Diffuser",  val: wk.pepper, color: TYPE_META.pepper.color },
+              { label: "Horn",      val: wk.last,   color: TYPE_META.last.color },
             ].map((row) => (
               <div className="hbar-row" key={row.label}>
                 <span className="hbar-icon-lbl">{row.label}</span>
@@ -1665,7 +1661,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
       <div className="cc">
         <div className="cc-hdr"><span className="cc-title">Confidence Score Distribution (this week)</span></div>
         {confLogs.length === 0 ? (
-          <div style={{ color: "var(--dim)", fontSize: 12, textAlign: "center", padding: "30px 0" }}>No detection confidence data yet.</div>
+          <div style={{ color: "var(--dim)", fontSize: 13, textAlign: "center", padding: "30px 0" }}>No detection confidence data yet.</div>
         ) : (
           <div className="hbar-list">
             {buckets.map((v, i) => (
@@ -1709,7 +1705,7 @@ function ChangePasswordForm() {
 
   return (
     <div className="scard">
-      <div className="sc-title">Change Password</div>
+      <div className="sc-title">Account Settings — Change Password</div>
       <div className="login-field">
         <label className="login-lbl">Current Password</label>
         <PasswordField value={current} placeholder="Current password" onChange={(e) => setCurrent(e.target.value)} />
@@ -1723,160 +1719,40 @@ function ChangePasswordForm() {
         <PasswordField value={confirm} placeholder="Repeat new password" onChange={(e) => setConfirm(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
       </div>
       <button className="login-btn" onClick={submit} disabled={busy} style={{ marginTop: 4 }}>{busy ? "Updating…" : "Update Password"}</button>
-      {msg && <div style={{ marginTop: 10, fontFamily: "var(--font-mono)", fontSize: 12, color: msg.ok ? "var(--accent)" : "var(--red)" }}>{msg.text}</div>}
+      {msg && <div style={{ marginTop: 10, fontFamily: "var(--font-mono)", fontSize: 13, color: msg.ok ? "var(--accent)" : "var(--red)" }}>{msg.text}</div>}
     </div>
   );
 }
 
-// ── Settings Page — system settings + Device (Pi) setup ────────────────────
-function Settings({ enabled, setEnabled, detecting, setDetecting, detInt, setDetInt, rpiConnected, rpiIp, rpiOwner, currentUser, isAdmin, onConnect, onDisconnect, fetchInstallCommand }) {
-  const [tab, setTab] = useState("system");
-  const [ip, setIp] = useState(rpiIp || "");
-  const [msg, setMsg] = useState(null);
-  const [installCmd, setInstallCmd] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const isOwner = rpiOwner === currentUser;
-  const lockedByOther = rpiOwner && !isOwner;
-
-  useEffect(() => { setIp(rpiIp || ""); }, [rpiIp]);
-
-  function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 3500); }
-
-  async function connect() {
-    if (lockedByOther || !ip || busy) return;
-    setBusy(true);
-    try { await onConnect(ip); flash("Linked — waiting for the Pi's first heartbeat"); }
-    catch (e) { flash(e.message || "Could not connect"); }
-    finally { setBusy(false); }
-  }
-  async function disconnect() {
-    if (!isOwner || busy) return;
-    setBusy(true);
-    try { await onDisconnect(); setIp(""); flash("Disconnected and unlinked"); }
-    catch (e) { flash(e.message || "Could not disconnect"); }
-    finally { setBusy(false); }
-  }
-  async function loadInstallCommand() {
-    try { const { command } = await fetchInstallCommand(); setInstallCmd(command); }
-    catch { setInstallCmd(null); }
-  }
-  function copyCommand() {
-    if (!installCmd) return;
-    navigator.clipboard?.writeText(installCmd);
-    flash("Command copied");
-  }
-
+// ── Settings Page — Detection, Trigger Config, Account (one scrolling page) ──
+function Settings({ enabled, setEnabled, detecting, setDetecting }) {
   return (
-    <>
-      <div className="tabbar">
-        <button className={`tabbtn ${tab === "system" ? "active" : ""}`} onClick={() => setTab("system")}>System</button>
-        <button className={`tabbtn ${tab === "account" ? "active" : ""}`} onClick={() => setTab("account")}>Account</button>
-        <button className={`tabbtn ${tab === "device" ? "active" : ""}`} onClick={() => { setTab("device"); if (isAdmin && !installCmd) loadInstallCommand(); }}>Device</button>
+    <div className="sg-col">
+      <div className="scard">
+        <div className="sc-title">Detection Settings</div>
+        <div className="srow">
+          <div><div className="sn">Detection Status</div><div className="sd">Turn automatic rat detection on or off</div></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: detecting ? "var(--red)" : "var(--dim)" }}>{detecting ? "ON" : "OFF"}</span>
+            <div className={`tog ${detecting ? "on" : ""} red`} onClick={() => setDetecting(!detecting)} style={{ cursor: "pointer" }} />
+          </div>
+        </div>
+        <div className="srow"><div><div className="sn">Deterrence</div><div className="sd">Lights - Ultrasonic - Diffuser - Horn</div></div></div>
       </div>
 
-      {tab === "system" && (
-        <div className="sg">
-          <div className="scard">
-            <div className="sc-title">Detection Settings</div>
-            <div className="srow"><div><div className="sn">Auto-Detection</div><div className="sd">Pi scans and responds automatically</div></div><div className={`tog ${detecting ? "on" : ""} red`} onClick={() => setDetecting(!detecting)} style={{ cursor: "pointer" }} /></div>
-            <div className="srow"><div><div className="sn">Detection Interval</div><div className="sd">How often the Pi checks (seconds)</div></div><input className="sin" type="number" value={detInt} min={5} max={120} onChange={(e) => setDetInt(Number(e.target.value))} /></div>
-            <div className="srow"><div><div className="sn">Sequence</div><div className="sd">Lights → Audio → Peppermint → Last Resort (Pi-controlled timing)</div></div></div>
+      <div className="scard">
+        <div className="sc-title">Trigger Config</div>
+        {Object.entries(TYPE_META).map(([k, m]) => (
+          k === "capture" ? null :
+          <div key={k} className="srow">
+            <div><div className="sn">{m.label}</div><div className="sd">{enabled[k] ? "Armed" : "Disabled"}</div></div>
+            <div className={`tog ${enabled[k] ? "on" : ""}`} onClick={() => setEnabled(k, !enabled[k])} style={{ cursor: "pointer" }} />
           </div>
-          <div className="scard">
-            <div className="sc-title">Trigger Config</div>
-            {Object.entries(TYPE_META).map(([k, m]) => (
-              k === "capture" ? null :
-              <div key={k} className="srow">
-                <div><div className="sn">{m.label}</div><div className="sd">{enabled[k] ? "Armed" : "Disabled"}</div></div>
-                <div className={`tog ${enabled[k] ? "on" : ""} ${k === "last" ? "red" : ""}`} onClick={() => setEnabled(k, !enabled[k])} style={{ cursor: "pointer" }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {tab === "account" && (
-        <div className="sg">
-          <ChangePasswordForm />
-        </div>
-      )}
-
-      {tab === "device" && (
-        <>
-          <div className="setup-wizard">
-            <div className="setup-step done">
-              <div className="setup-step-num">1</div>
-              <div className="setup-step-title">Power on your Pi</div>
-              <div className="setup-step-desc">Plug in the Pi and connect it to the same network as this backend.</div>
-            </div>
-            <div className={`setup-step ${installCmd ? "done" : ""}`}>
-              <div className="setup-step-num">2</div>
-              <div className="setup-step-title">Run one command</div>
-              <div className="setup-step-desc">Copy the command below (admin-only, includes your device key) and run it once on the Pi.</div>
-            </div>
-            <div className={`setup-step ${rpiConnected ? "done" : ""}`}>
-              <div className="setup-step-num">3</div>
-              <div className="setup-step-title">Connect from here</div>
-              <div className="setup-step-desc">Enter the Pi's IP below and click Connect, then wait for its first heartbeat.</div>
-            </div>
-          </div>
-
-          {isAdmin ? (
-            <div className="iot-card" style={{ marginBottom: 14 }}>
-              <div className="iot-title">Install Command — run once on the Pi</div>
-              <div className="command-box">
-                <span>{installCmd || "Loading…"}</span>
-                <button className="copy-btn" onClick={copyCommand} disabled={!installCmd}>Copy</button>
-              </div>
-            </div>
-          ) : (
-            <div className="locked-banner">Only admins can view the install command and pair the device.</div>
-          )}
-
-          {lockedByOther && (
-            <div className="locked-banner">This device is linked to account <b style={{ color: "var(--text)" }}>"{rpiOwner}"</b>. Ask them to disconnect it before connecting here.</div>
-          )}
-
-          {isAdmin && (
-            <div className="iot-card" style={{ marginBottom: 14 }}>
-              <div className="iot-title">Connect Your Pi</div>
-              {rpiIp && isOwner ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <span className="owner-pill">Linked to {rpiOwner} · {rpiIp} · {rpiConnected ? "online" : "waiting for heartbeat"}</span>
-                  <button className="iot-btn ghost" onClick={disconnect} disabled={busy}>Disconnect & Unlink</button>
-                </div>
-              ) : (
-                <>
-                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                    <input className="input-iot" placeholder="Pi IP address, e.g. 192.168.1.42" value={ip}
-                      onChange={(e) => setIp(e.target.value)} disabled={lockedByOther} />
-                    <button className="iot-btn prim" onClick={connect} disabled={lockedByOther || !ip || busy}>Connect</button>
-                  </div>
-                  <div style={{ fontSize: "11px", color: "var(--dim)", marginTop: "10px" }}>Find the IP by running <b style={{ color: "var(--text)" }}>hostname -I</b> on the Pi after setup finishes.</div>
-                </>
-              )}
-              {msg && <div style={{ marginTop: "10px", fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--accent)" }}>{msg}</div>}
-            </div>
-          )}
-
-          <div className="iot-card">
-            <div className="iot-title">Wiring Reference (optional)</div>
-            <div className="pin-grid">
-              {[{ num: 17, name: "Lights", color: "#10B981" }, { num: 27, name: "Audio", color: "#FCD34D" },
-                { num: 22, name: "Pepper", color: "#6EE7B7" }, { num: 18, name: "L.Resort", color: "#F87171" },
-                { num: 11, name: "PIR", color: "#34D399" }, { num: 9, name: "IR", color: "#2DD4BF" },
-                { num: 10, name: "Camera", color: "#FB923C" }, { num: 25, name: "Buzzer", color: "#A3E635" },
-              ].map((p) => (
-                <div key={p.num} className="pin-item">
-                  <div className="pin-num" style={{ color: p.color }}>GPIO{p.num}</div>
-                  <div className="pin-name">{p.name}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-    </>
+      <ChangePasswordForm />
+    </div>
   );
 }
 
@@ -2090,9 +1966,7 @@ export default function App() {
         <div className="nav-right" style={{ marginLeft: "auto" }}>
           <button className="theme-toggle" onClick={toggleTheme}>{theme === "dark" ? "☀ Light" : "☾ Dark"}</button>
           <span className="nav-time">{fmtT(clock)}</span>
-          {ratCount > 0 && <span className="nb nb-rat">{ratCount}</span>}
           {!isAdmin && <span className={`nb ${rpiConnected ? "nb-rpi" : "nb-off"}`}>{rpiConnected ? "Pi Online" : "Pi Offline"}</span>}
-          {!isAdmin && <span className="nb nb-live">LIVE</span>}
           <span className={`nb ${isAdmin ? "nb-admin" : "nb-user"}`}>{isAdmin ? "Admin" : "User"}</span>
           <div className="nav-user">{currentUser}</div>
           <button className="nav-out" onClick={signOut}>Sign Out</button>

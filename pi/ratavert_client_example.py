@@ -8,7 +8,7 @@ running on a Raspberry Pi 3B+ (or better).
 WHAT THIS SCRIPT DOES:
   - Captures a frame from the camera on a timer
   - Runs your NCNN model on it to check for a rat
-  - On detection: fires the lights/audio/pepper sequence (+ last resort if
+  - On detection: fires the lights/ultrasonic/diffuser sequence (+ horn if
     still detected after N seconds), uploads the photo, reports the
     detection to the backend
   - Sends a heartbeat every 5s so the dashboard knows it's online
@@ -77,15 +77,14 @@ ARMED = {"lights": True, "audio": True, "pepper": True, "last": True}
 
 # GPIO pin mapping — matches the wiring reference shown in the dashboard's
 # Settings → Device tab. Adjust to your actual wiring.
-# "last" (the snap trap) is deliberately excluded here — it's a servo that
-# needs an angle, not just on/off power, so it's handled separately below.
-GPIO_PINS = {"lights": 17, "audio": 27, "pepper": 22}
-SERVO_PIN = 18
+# Internal keys are unchanged so the backend/API stay compatible:
+#   "lights" = Lights, "audio" = Ultrasonic, "pepper" = Diffuser, "last" = Horn.
+# The snap trap is now a manual mechanical trap and is not controlled here.
+GPIO_PINS = {"lights": 17, "audio": 27, "pepper": 22, "last": 18}
 
 _model = None            # lazy-loaded YOLO model (loading it is slow — do it once)
 _camera = None           # lazy-initialized camera handle
 _gpio_devices = {}       # lazy-initialized gpiozero output devices (relays)
-_trap_servo = None       # lazy-initialized gpiozero Servo (snap trap)
 
 
 # ── Camera ───────────────────────────────────────────────────────────────────
@@ -128,38 +127,8 @@ def capture_photo_path() -> str | None:
 
 
 # ── GPIO triggers ────────────────────────────────────────────────────────────
-def _get_trap_servo():
-    global _trap_servo
-    if _trap_servo is None:
-        from gpiozero import Servo
-        _trap_servo = Servo(SERVO_PIN)
-    return _trap_servo
-
-
-def _fire_trap(duration: float) -> bool:
-    """Swing the SG90 to trigger the snap trap, then return to neutral.
-    Uses gpiozero.Servo (PWM angle control) rather than a plain on/off
-    relay, since the trap needs to physically move, not just get power.
-    """
-    try:
-        servo = _get_trap_servo()
-        print(f"[HARDWARE] firing snap trap servo on GPIO{SERVO_PIN}")
-        servo.min()          # swing to trigger position — tune min()/max()
-        time.sleep(min(duration, 1.0))   # servos don't need long dwell time
-        servo.mid()          # return to neutral/rest position
-        time.sleep(0.3)      # let it settle before detaching
-        servo.detach()       # stop sending PWM so it doesn't jitter/buzz while idle
-        return True
-    except Exception as e:
-        print(f"[HARDWARE] snap trap servo failed: {e}")
-        return False
-
-
 def fire_trigger(trigger_type: str, duration: float) -> bool:
     """Actuate the physical hardware for `trigger_type`. Return True on success."""
-    if trigger_type == "last":
-        return _fire_trap(duration)
-
     pin = GPIO_PINS.get(trigger_type)
     if pin is None:
         print(f"[HARDWARE] no GPIO pin configured for '{trigger_type}'")
