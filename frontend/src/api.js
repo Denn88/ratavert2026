@@ -62,7 +62,6 @@ export const api = {
 
   connectDevice: (ip) => request("/api/device/connect", { method: "POST", body: { ip } }),
   disconnectDevice: () => request("/api/device/disconnect", { method: "POST" }),
-  setDeviceOwner: (owner) => request("/api/device/owner", { method: "POST", body: { owner } }),
   getInstallCommand: () => request("/api/device/install-command"),
 
   fireTrigger: (type, duration = 2) => request("/api/trigger", { method: "POST", body: { type, duration } }),
