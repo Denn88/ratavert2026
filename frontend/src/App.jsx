@@ -1368,10 +1368,11 @@ function ActivityPage({ logs, photos }) {
 }
 
 // ── Accounts Page (admin) ───────────────────────────────────────────────────
-function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onToggleActive }) {
+function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onToggleActive, deviceOwner, onAssignDevice }) {
   const [newUser, setNewUser] = useState("");
   const [newPass, setNewPass] = useState("");
   const [newRole, setNewRole] = useState("user");
+  const [newAssign, setNewAssign] = useState(true);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -1380,8 +1381,8 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
     if (!u || !newPass) { setErr("Username and password are required."); return; }
     setBusy(true);
     try {
-      await onCreate(u, newPass, newRole);
-      setNewUser(""); setNewPass(""); setNewRole("user"); setErr("");
+      await onCreate(u, newPass, newRole, newAssign);
+      setNewUser(""); setNewPass(""); setNewRole("user"); setNewAssign(true); setErr("");
     } catch (e) {
       setErr(e.message || "Could not create account.");
     } finally {
@@ -1406,6 +1407,12 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
             <option value="admin">Admin (full access)</option>
           </select>
         </div>
+               <div className="af-field"><span className="af-lbl">DEVICE</span>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", color: "var(--text)", fontSize: 14, cursor: "pointer" }}>
+            <input type="checkbox" checked={newAssign} onChange={(e) => setNewAssign(e.target.checked)} />
+            Assign device to this account
+          </label>
+        </div>
         <button className="af-btn" onClick={addAccount} disabled={busy}>{busy ? "Creating…" : "+ Create Account"}</button>
         {err && <span style={{ color: "var(--red)", fontSize: "13px", fontFamily: "var(--font-mono)" }}>{err}</span>}
       </div>
@@ -1419,6 +1426,7 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
             <div className="acct-info">
               <div className="acct-name">{acc.username} {acc.username === currentUser && <span style={{ fontSize: 11, color: "var(--dim)", fontWeight: 400 }}>(you)</span>}
                 <span className={`status-pill ${acc.active ? "active" : "inactive"}`}>{acc.active ? "ACTIVE" : "DEACTIVATED"}</span>
+                 {deviceOwner === acc.username && <span className="status-pill active" style={{ marginLeft: 6 }}>DEVICE</span>}
               </div>
               <div className="acct-meta">Created {new Date(acc.createdAt).toLocaleDateString()}</div>
             </div>
@@ -1427,6 +1435,9 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
               <span>Last activity: <b>{acc.lastActivity ? new Date(acc.lastActivity).toLocaleString() : "No activity yet"}</b></span>
             </div>
             <div className="acct-actions">
+               {acc.active && deviceOwner !== acc.username && (
+                <button className="react-btn" onClick={() => onAssignDevice(acc.username)}>Assign device</button>
+              )}
               <select className="role-sel" value={acc.role} onChange={(e) => onSetRole(acc.username, e.target.value)} disabled={acc.username === currentUser}>
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
@@ -1922,10 +1933,19 @@ export default function App() {
     setRpiIp(""); setRpiOwner(null); setRpi(false);
   }
 
-  async function onCreateAccount(username, password, role) {
+  async function onCreateAccount(username, password, role, assignDevice) {
     await api.createAccount(username, password, role);
     await loadAccounts();
+    if (assignDevice) await onAssignOwner(username);
   }
+ 
+  async function onAssignOwner(username) {
+    try {
+      const status = await api.setDeviceOwner(username);
+      setRpiOwner(status.owner || null);
+    } catch (e) { flashToast(e.message || "Could not assign device"); }
+  }
+ 
   async function onSetRole(username, role) {
     try { await api.patchAccount(username, { role }); await loadAccounts(); }
     catch (e) { flashToast(e.message); }
@@ -2044,7 +2064,7 @@ export default function App() {
               />
             )}
             {page === "admin" && (isAdmin
-              ? <AdminPanel accountsProps={{ accounts, loading: accountsLoading, currentUser, onCreate: onCreateAccount, onSetRole, onToggleActive }} />
+              ? <AdminPanel accountsProps={{ accounts, loading: accountsLoading, currentUser, onCreate: onCreateAccount, onSetRole, onToggleActive, deviceOwner: rpiOwner, onAssignDevice: onAssignOwner }} />
               : <AccessDenied />)}
           </div>
         </div>
