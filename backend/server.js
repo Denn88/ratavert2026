@@ -168,7 +168,7 @@ function detectionToLogEntry(d) {
     type: isManual ? "capture" : null,
     user: isManual ? d.captured_by || "unknown" : "auto-detect",
     status: "ok",
-    detail: isManual ? "Manual test capture" : "Motion + heat — rat confirmed",
+    detail: isManual ? "Manual test capture" : "Rat confirmed",
     isRat: !isManual,
     isLast: false,
     photoId: photoUrlFor(d.photo_path),
