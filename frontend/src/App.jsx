@@ -1771,7 +1771,7 @@ export default function App() {
   const [currentUser, setUser] = useState(getStoredUser()?.username || null);
   const [role, setRole] = useState(getStoredUser()?.role || null);
 
-  const [page, setPage] = useState("dashboard");
+  const [page, setPage] = useState(getStoredUser()?.role === "admin" ? "admin" : "dashboard");
   const [logs, setLogs] = useState([]);
   const [chart, setChart] = useState([]);
   const [photos, setPhotos] = useState([]);
@@ -1935,19 +1935,24 @@ export default function App() {
     catch (e) { flashToast(e.message); }
   }
 
-  const MAIN_NAV = [
-    { key: "dashboard", label: "Dashboard" },
-    { key: "triggers",  label: "Triggers" },
-    { key: "activity",  label: isAdmin ? "Device Reports" : "Activity" },
-    { key: "analytics", label: "Analytics" },
-    { key: "settings",  label: "Settings" },
-  ];
+    const MAIN_NAV = isAdmin
+    ? [
+        { key: "activity", label: "Device Reports" },
+        { key: "settings", label: "Settings" },
+      ]
+    : [
+        { key: "dashboard", label: "Dashboard" },
+        { key: "triggers",  label: "Triggers" },
+        { key: "activity",  label: "Activity" },
+        { key: "analytics", label: "Analytics" },
+        { key: "settings",  label: "Settings" },
+      ];
 
   // ── Screen router ─────────────────────────────────────────────────────
   if (screen === "landing") return <LandingPage onLogin={() => setScreen("login")} theme={theme} onToggleTheme={toggleTheme} />;
   if (screen === "login") return (
     <LoginPage
-      onSuccess={(token, user) => { storeSession(token, user); setUser(user.username); setRole(user.role); setScreen("dashboard"); }}
+      onSuccess={(token, user) => { storeSession(token, user); setUser(user.username); setRole(user.role); setPage(user.role === "admin" ? "admin" : "dashboard"); setScreen("dashboard"); }}
       onBack={() => setScreen("landing")}
       theme={theme}
       onToggleTheme={toggleTheme}
@@ -1970,6 +1975,15 @@ export default function App() {
 
       <div className="body">
         <aside className="sidebar">
+            {isAdmin && (
+             <div className="admin-zone">
+              <div className="sb-label admin-lbl">Admin</div>
+              <div className={`sb-item ${page === "admin" ? "active" : ""}`} onClick={() => setPage("admin")}>
+                Admin Panel
+              </div>
+            </div>
+          )}
+
           <div className="sb-section">
             <div className="sb-label">Navigation</div>
             {MAIN_NAV.map((n) => (
@@ -1978,15 +1992,6 @@ export default function App() {
               </div>
             ))}
           </div>
-
-          {isAdmin && (
-            <div className="admin-zone">
-              <div className="sb-label admin-lbl">Admin</div>
-              <div className={`sb-item ${page === "admin" ? "active" : ""}`} onClick={() => setPage("admin")}>
-                Admin Panel
-              </div>
-            </div>
-          )}
 
           <div className="sb-divider" />
 
