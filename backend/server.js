@@ -402,6 +402,23 @@ app.post(
 
 // ══════════════════════════════════════ DEVICE PAIRING ═══════════════════════
 app.post(
+  "/api/device/owner",
+  requireUser,
+  requireAdmin,
+  wrap(async (req, res) => {
+    const owner = req.body && req.body.owner ? String(req.body.owner).toLowerCase() : null;
+    if (owner) {
+      const acc = await db.one("SELECT username, active FROM accounts WHERE username = $1", [owner]);
+      if (!acc || !acc.active) return res.status(400).json({ error: "Account not found or deactivated" });
+    }
+    await db.query("UPDATE device SET owner = $1 WHERE id = 1", [owner]);
+    const status = await deviceStatusPayload();
+    broadcast("status", status);
+    res.json(status);
+  })
+);
+
+app.post(
   "/api/device/connect",
   requireUser,
   requireAdmin,
