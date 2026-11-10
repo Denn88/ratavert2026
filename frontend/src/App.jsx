@@ -776,11 +776,6 @@ function LoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
           {loading ? <><div className="spin" />Authenticating…</> : "→ Sign In"}
         </button>
 
-        <div className="login-hint">
-          First time running the server? Sign in with the seed admin account you
-          set in the backend's <span>.env</span> file, then create real accounts
-          from Admin Panel → User Management.
-        </div>
         <button className="login-back" onClick={onBack}>← Back to landing page</button>
       </div>
     </div>
