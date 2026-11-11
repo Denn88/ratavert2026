@@ -230,7 +230,7 @@ function triggerToLogEntry(t) {
 // table, covering the 7 days up to "now". This is what backs the admin's
 // Device Reports (Weekly tab) — a frozen record, not a live query, so past
 // weeks stay stable even as new detections/triggers keep coming in.
-async function generateWeeklyReport() {
+async function generateWeeklyReport(deviceId = 1) {
   const now = new Date();
   const sinceIso = new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString();
   const nowIso = now.toISOString();
