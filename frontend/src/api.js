@@ -83,6 +83,7 @@ export const api = {
   getAccounts: () => request("/api/accounts"),
   createAccount: (username, password, role) => request("/api/accounts", { method: "POST", body: { username, password, role } }),
   patchAccount: (username, patch) => request(`/api/accounts/${encodeURIComponent(username)}`, { method: "PATCH", body: patch }),
+  deleteAccount: (username, password) => request(`/api/accounts/${encodeURIComponent(username)}`, { method: "DELETE", body: { password } }),
 
   photoUrl: (relOrAbs) => (relOrAbs && relOrAbs.startsWith("http") ? relOrAbs : `${API_URL}${relOrAbs}`),
 };

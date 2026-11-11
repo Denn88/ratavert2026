@@ -189,6 +189,19 @@ const css = `
   .nb-live  { background:rgba(16,185,129,.12); color:var(--accent); border:1px solid rgba(16,185,129,.3); }
   .nb-rat   { background:rgba(248,113,113,.12); color:var(--red);    border:1px solid rgba(248,113,113,.3); }
   .nb-rpi   { background:rgba(52,211,153,.12);  color:var(--bright); border:1px solid rgba(52,211,153,.3); }
+  .notif-wrap { position:relative; }
+  .notif-btn { cursor:pointer; display:flex; align-items:center; gap:7px; }
+  .notif-dot { background:var(--red); color:#fff; border-radius:9px; padding:0 6px; font-size:10px; line-height:16px; }
+  .notif-panel { position:absolute; top:calc(100% + 8px); right:0; width:340px; max-height:380px; overflow-y:auto;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px; z-index:300;
+    box-shadow:0 10px 30px rgba(0,0,0,.35); }
+  .notif-hdr { padding:12px 14px; font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px;
+    text-transform:uppercase; color:var(--dim); border-bottom:1px solid var(--border); }
+  .notif-item { padding:11px 14px; border-bottom:1px solid var(--border); }
+  .notif-item:last-child { border-bottom:none; }
+  .notif-title { font-size:13px; font-weight:700; color:var(--red); }
+  .notif-meta { font-size:12px; color:var(--dim); margin-top:3px; font-family:var(--font-mono); }
+  .notif-empty { padding:24px 14px; text-align:center; color:var(--dim); font-size:13px; }
   .nb-admin { background:rgba(16,185,129,.12);  color:var(--accent); border:1px solid rgba(16,185,129,.3); }
   .nb-user  { background:rgba(45,212,191,.12);  color:var(--teal);   border:1px solid rgba(45,212,191,.3); }
   .nb-off   { background:rgba(90,158,111,.1);   color:var(--dim);    border:1px solid var(--border); }
@@ -517,6 +530,18 @@ const css = `
   .react-btn { padding:6px 12px; border-radius:5px; border:1px solid var(--accent); background:rgba(16,185,129,.08);
     color:var(--accent); font-size:12px; cursor:pointer; font-family:var(--font-mono); }
   .react-btn:hover { background:rgba(16,185,129,.16); }
+   .del-btn { padding:6px 12px; border-radius:5px; border:1px solid var(--red); background:transparent;
+    color:var(--red); font-size:12px; cursor:pointer; font-family:var(--font-mono); }
+  .del-btn:hover:not(:disabled) { background:rgba(248,113,113,.12); }
+  .del-btn:disabled { opacity:.35; cursor:not-allowed; }
+  .del-btn.solid { background:var(--red); color:#fff; }
+  .del-btn.solid:hover:not(:disabled) { background:var(--red); opacity:.85; }
+  .modal-back { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+  .modal-box { width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px; }
+  .modal-title { font-family:var(--font-mono); font-size:13px; letter-spacing:1.5px; text-transform:uppercase; color:var(--red); margin-bottom:12px; }
+  .modal-text { font-size:14px; line-height:1.55; color:var(--text); margin-bottom:16px; }
+  .modal-err { margin-top:10px; font-family:var(--font-mono); font-size:12px; color:var(--red); }
+  .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
 
   /* ANALYTICS PAGE */
   .an-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
@@ -776,11 +801,6 @@ function LoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
           {loading ? <><div className="spin" />Authenticating…</> : "→ Sign In"}
         </button>
 
-        <div className="login-hint">
-          First time running the server? Sign in with the seed admin account you
-          set in the backend's <span>.env</span> file, then create real accounts
-          from Admin Panel → User Management.
-        </div>
         <button className="login-back" onClick={onBack}>← Back to landing page</button>
       </div>
     </div>
@@ -944,7 +964,7 @@ function DeviceReportsPage() {
             { label: "Account",     val: r.device_owner || "—", sub: "IoT device owner" },
             { label: "Device IP",   val: r.device_ip || "—", sub: "at time of report" },
             { label: "Period",      val: `${new Date(r.period_since).toLocaleDateString()} – ${new Date(r.period_until).toLocaleDateString()}`, sub: "7-day window" },
-            { label: "Detections",  val: r.detections_total, color: "var(--red)", sub: `${r.detections_escalated} escalated to Horn` },
+            { label: "Detections",  val: r.detections_total, color: "var(--red)", sub: "rat events in this week" },
           ].map((s, i) => (
             <div key={i}><div className="si-label">{s.label}</div>
               <div className="si-val" style={{ color: s.color }}>{s.val}</div>
@@ -982,7 +1002,6 @@ function DeviceReportsPage() {
 
   const totalReports = rows.length;
   const totalDetections = rows.reduce((a, r) => a + (r.detections_total || 0), 0);
-  const totalEscalated = rows.reduce((a, r) => a + (r.detections_escalated || 0), 0);
   const uniqueDevices = new Set(rows.map((r) => r.device_owner || "—")).size;
   const lastGenerated = rows.length
     ? rows.reduce((latest, r) => {
@@ -990,7 +1009,6 @@ function DeviceReportsPage() {
         return !latest || new Date(t) > new Date(latest) ? t : latest;
       }, null)
     : null;
-  const resolvedPct = totalDetections ? Math.round(((totalDetections - totalEscalated) / totalDetections) * 100) : 0;
   const avgPerReport = totalReports ? Math.round(totalDetections / totalReports) : 0;
 
   // Chronological (oldest → newest), last 8 periods, for the bar chart.
@@ -998,6 +1016,12 @@ function DeviceReportsPage() {
     .sort((a, b) => new Date(range === "weekly" ? a.generated_at : a.lastSeen) - new Date(range === "weekly" ? b.generated_at : b.lastSeen))
     .slice(-8);
   const chartMax = Math.max(...chartRows.map((r) => r.detections_total || 0), 1);
+  const peakPeriod = Math.max(...rows.map((r) => r.detections_total || 0), 0);
+  const latestPeriod = chartRows.length ? chartRows[chartRows.length - 1].detections_total || 0 : 0;
+  const byAccount = new Map();
+  rows.forEach((r) => { const k = r.device_owner || "—"; byAccount.set(k, (byAccount.get(k) || 0) + (r.detections_total || 0)); });
+  const accountRows = Array.from(byAccount.entries()).sort((a, b) => b[1] - a[1]);
+  const accountMax = Math.max(...accountRows.map((x) => x[1]), 1);
 
   return (
     <>
@@ -1010,7 +1034,7 @@ function DeviceReportsPage() {
         {[
           { label: "Report Type", val: range === "weekly" ? "WEEKLY" : "MONTHLY", color: "var(--accent)", sub: range === "weekly" ? "7-day snapshots" : "grouped by month" },
           { label: "Total Detections", val: totalDetections, color: "var(--red)", sub: "across all periods" },
-          { label: "Escalated", val: totalEscalated, color: "var(--orange)", sub: "to Horn" },
+          { label: "Avg / Report", val: avgPerReport, color: "var(--orange)", sub: "detections" },
           { label: "Devices", val: uniqueDevices, color: "var(--teal)", sub: "reporting accounts" },
           { label: "Last Generated", val: lastGenerated ? new Date(lastGenerated).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "--:--", color: "var(--accent)", sub: lastGenerated ? new Date(lastGenerated).toLocaleDateString() : "no reports yet" },
         ].map((s, i) => (
@@ -1023,9 +1047,9 @@ function DeviceReportsPage() {
       <div className="metrics">
         {[
           { cls: "mc1", label: "Reports", val: totalReports, sub: <span className="badge bg">stored snapshots</span> },
-          { cls: "mc2", label: "Resolution Rate", val: `${resolvedPct}%`, sub: <span style={{ color: "var(--teal)" }}>without escalation</span> },
-          { cls: "mc3", label: "Avg / Report", val: avgPerReport, sub: "detections" },
-          { cls: "mc4", label: "Escalated", val: totalEscalated, sub: <span className="badge br">to Horn</span> },
+          { cls: "mc2", label: "Latest Period", val: latestPeriod, sub: <span style={{ color: "var(--teal)" }}>detections</span> },
+          { cls: "mc3", label: "Peak Period", val: peakPeriod, sub: "most detections in one period" },
+          { cls: "mc4", label: "Accounts", val: accountRows.length, sub: <span className="badge br">with a device</span> },
         ].map((m, i) => (
           <div key={i} className={`mc ${m.cls}`}>
             <div className="mc-lbl">{m.label}</div>
@@ -1041,7 +1065,6 @@ function DeviceReportsPage() {
             <span className="cc-title">Detections — Recent {range === "weekly" ? "Weeks" : "Months"}</span>
             <div style={{ display: "flex", gap: "12px" }}>
               <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--red)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--red)", display: "inline-block" }} />Detections</span>
-              <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--orange)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--orange)", display: "inline-block" }} />Escalated</span>
             </div>
           </div>
           {chartRows.length === 0 ? (
@@ -1052,7 +1075,6 @@ function DeviceReportsPage() {
                 <div className="week-col" key={i}>
                   <div className="week-bar-pair">
                     <div className="week-bar" style={{ height: `${Math.round(((r.detections_total || 0) / chartMax) * 120) + 2}px`, background: "var(--red)" }} title={`${r.detections_total} detections`} />
-                    <div className="week-bar" style={{ height: `${Math.round(((r.detections_escalated || 0) / chartMax) * 120) + 2}px`, background: "var(--orange)" }} title={`${r.detections_escalated} escalated`} />
                   </div>
                   <span className="week-lbl">
                     {range === "weekly" ? new Date(r.period_since).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : (r.monthLabel || "").split(" ")[0].slice(0, 3)}
@@ -1063,8 +1085,17 @@ function DeviceReportsPage() {
           )}
         </div>
         <div className="cc">
-          <div className="cc-hdr"><span className="cc-title">Resolved vs Escalated</span></div>
-          <ReportsDonut resolved={Math.max(totalDetections - totalEscalated, 0)} escalated={totalEscalated} />
+          <div className="cc-hdr"><span className="cc-title">Detections by Account</span></div>
+          <div className="hbar-list">
+            {accountRows.length === 0 && <div style={{ color: "var(--dim)", fontSize: 13, textAlign: "center", padding: "30px 0" }}>No reports yet.</div>}
+            {accountRows.map(([name, val]) => (
+              <div className="hbar-row" key={name}>
+                <span className="hbar-icon-lbl">{name}</span>
+                <div className="hbar-track"><div className="hbar-fill" style={{ width: `${Math.round((val / accountMax) * 100)}%`, background: "var(--accent)" }} /></div>
+                <span className="hbar-val">{val}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1091,7 +1122,7 @@ function DeviceReportsPage() {
           </table>
         ) : (
           <table className="ltable">
-            <thead><tr><th>Account</th><th>Device</th><th>Month</th><th>Detections</th><th>Escalated</th><th>Last Seen</th></tr></thead>
+            <thead><tr><th>Account</th><th>Device</th><th>Month</th><th>Detections</th><th>Reports</th><th>Last Seen</th></tr></thead>
             <tbody>
               {monthlyRows.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--dim)", padding: "26px", fontFamily: "var(--font-mono)", fontSize: "12px" }}>NO MONTHLY DATA YET — ACCUMULATES FROM WEEKLY REPORTS</td></tr>}
               {monthlyRows.map((r) => (
@@ -1100,7 +1131,7 @@ function DeviceReportsPage() {
                   <td style={{ fontSize: "12px", color: "var(--dim)" }}>{r.device_ip || "—"}</td>
                   <td style={{ fontSize: "12px", color: "var(--dim)" }}>{r.monthLabel}</td>
                   <td style={{ color: "var(--red)", fontWeight: 700 }}>{r.detections_total}</td>
-                  <td style={{ color: "var(--orange)" }}>{r.detections_escalated}</td>
+                  <td style={{ color: "var(--dim)" }}>{r.reportCount}</td>
                   <td><span className="ts">{new Date(r.lastSeen).toLocaleString()}</span></td>
                 </tr>
               ))}
@@ -1109,41 +1140,6 @@ function DeviceReportsPage() {
         )}
       </div>
     </>
-  );
-}
-
-// Two-color donut (resolved vs escalated) reusing the same .donut-ring / .donut
-// CSS the Dashboard's per-type DonutChart uses, generalized to two segments.
-function ReportsDonut({ resolved, escalated }) {
-  const total = resolved + escalated || 1;
-  const r = 36, cx = 46, cy = 46, circ = 2 * Math.PI * r;
-  const resolvedDash = (resolved / total) * circ;
-  return (
-    <div>
-      <div className="donut-ring">
-        <svg viewBox="0 0 92 92" className="donut" width="90" height="90">
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border)" strokeWidth="9" />
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--accent)" strokeWidth="9" strokeDasharray={`${resolvedDash} ${circ - resolvedDash}`} />
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--red)" strokeWidth="9" strokeDasharray={`${circ - resolvedDash} ${resolvedDash}`} strokeDashoffset={-resolvedDash} />
-        </svg>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-            <div style={{ width: "7px", height: "7px", borderRadius: "2px", background: "var(--accent)" }} />
-            <span style={{ color: "var(--dim)" }}>Resolved</span>
-          </div>
-          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>{resolved}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "13px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-            <div style={{ width: "7px", height: "7px", borderRadius: "2px", background: "var(--red)" }} />
-            <span style={{ color: "var(--dim)" }}>Escalated</span>
-          </div>
-          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text)" }}>{escalated}</span>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -1373,7 +1369,23 @@ function ActivityPage({ logs, photos }) {
 }
 
 // ── Accounts Page (admin) ───────────────────────────────────────────────────
-function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onToggleActive }) {
+function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onToggleActive, onDelete }) {
+  const [delTarget, setDelTarget] = useState(null);
+  const [delStep, setDelStep] = useState(0);
+  const [delPass, setDelPass] = useState("");
+  const [delErr, setDelErr] = useState("");
+  const [delBusy, setDelBusy] = useState(false);
+
+  function openDelete(u) { setDelTarget(u); setDelStep(1); setDelPass(""); setDelErr(""); }
+  function closeDelete() { setDelTarget(null); setDelStep(0); setDelPass(""); setDelErr(""); }
+  async function confirmDelete() {
+    if (!delPass) { setDelErr("Enter your admin password."); return; }
+    setDelBusy(true);
+    try { await onDelete(delTarget, delPass); closeDelete(); }
+    catch (e) { setDelErr(e.message || "Could not delete account."); }
+    finally { setDelBusy(false); }
+  }
+
   const [newUser, setNewUser] = useState("");
   const [newPass, setNewPass] = useState("");
   const [newRole, setNewRole] = useState("user");
@@ -1438,11 +1450,47 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
               </select>
               {acc.active
                 ? <button className="deact-btn" onClick={() => onToggleActive(acc.username, false)} disabled={acc.username === currentUser}>Deactivate</button>
-                : <button className="react-btn" onClick={() => onToggleActive(acc.username, true)}>Reactivate</button>}
+                                : <button className="react-btn" onClick={() => onToggleActive(acc.username, true)}>Reactivate</button>}
+              <button className="del-btn" onClick={() => openDelete(acc.username)} disabled={acc.username === currentUser}>Delete</button>
             </div>
           </div>
         ))}
       </div>
+
+      {delTarget && (
+        <div className="modal-back" onClick={closeDelete}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            {delStep === 1 ? (
+              <>
+                <div className="modal-title">Delete account?</div>
+                <div className="modal-text">
+                  You are about to permanently delete <b>{delTarget}</b>. This cannot be undone. Their device will be unassigned, but the detection history is kept.
+                </div>
+                <div className="modal-actions">
+                  <button className="deact-btn" onClick={closeDelete}>Cancel</button>
+                  <button className="del-btn solid" onClick={() => setDelStep(2)}>Confirm</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="modal-title">Admin password required</div>
+                <div className="modal-text">Enter your admin password to delete <b>{delTarget}</b>.</div>
+                <PasswordField
+                  value={delPass}
+                  placeholder="Your admin password"
+                  onChange={(e) => { setDelPass(e.target.value); setDelErr(""); }}
+                  onKeyDown={(e) => e.key === "Enter" && confirmDelete()}
+                />
+                {delErr && <div className="modal-err">{delErr}</div>}
+                <div className="modal-actions">
+                  <button className="deact-btn" onClick={closeDelete} disabled={delBusy}>Cancel</button>
+                  <button className="del-btn solid" onClick={confirmDelete} disabled={delBusy}>{delBusy ? "Deleting…" : "Delete account"}</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -1460,11 +1508,8 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
   const avgConf = confLogs.length ? confLogs.reduce((a, l) => a + l.confidence, 0) / confLogs.length : 0;
   const maxBucket = Math.max(...buckets, 1);
 
-  const escalated = logs.filter((l) => l.isLast).length;
-  const resolved = Math.max(ratCount - escalated, 0);
-  const effTotal = resolved + escalated || 1;
-  const resolvedPct = Math.round((resolved / effTotal) * 100);
-  const escalatedPct = 100 - resolvedPct;
+  const todayStr = new Date().toDateString();
+  const detectionsToday = logs.filter((l) => l.isRat && new Date(l.ts).toDateString() === todayStr).length;
 
   const dayMap = new Map();
   logs.forEach((l) => {
@@ -1473,12 +1518,11 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
     if (!dayMap.has(dayKey)) {
       dayMap.set(dayKey, {
         dayKey, dateStr: l.dateStr, dateObj: new Date(tsDate.getFullYear(), tsDate.getMonth(), tsDate.getDate()),
-        detections: 0, escalated: 0, lights: 0, audio: 0, pepper: 0, last: 0, confSum: 0, confCount: 0,
+        detections: 0, lights: 0, audio: 0, pepper: 0, last: 0, confSum: 0, confCount: 0,
       });
     }
     const d = dayMap.get(dayKey);
     if (l.isRat) d.detections++;
-    if (l.isLast) d.escalated++;
     if (l.type && !l.isRat) d[l.type] = (d[l.type] || 0) + 1;
     if (typeof l.confidence === "number") { d.confSum += l.confidence; d.confCount++; }
   });
@@ -1490,27 +1534,25 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
   const last7Days = Array.from({ length: 7 }, (_, i) => dayAt(monday, i));           // this week, Mon → Sun
   const prev7Days = Array.from({ length: 7 }, (_, i) => dayAt(monday, i - 7));       // previous week, Mon → Sun
   function sumWindow(days) {
-    let detections = 0, escalated = 0, confSum = 0, confCount = 0, lights = 0, audio = 0, pepper = 0, last = 0;
+    let detections = 0, confSum = 0, confCount = 0, lights = 0, audio = 0, pepper = 0, last = 0;
     days.forEach((d) => {
       const row = dayMap.get(d.toDateString());
       if (!row) return;
-      detections += row.detections; escalated += row.escalated;
+      detections += row.detections;
       lights += row.lights; audio += row.audio; pepper += row.pepper; last += row.last;
       confSum += row.confSum; confCount += row.confCount;
     });
-    const resolved = Math.max(detections - escalated, 0);
-    const total = resolved + escalated || 1;
-    return { detections, resolved, escalated, resolvedPct: Math.round((resolved / total) * 100), avgConf: confCount ? confSum / confCount : 0, lights, audio, pepper, last };
+    return { detections, fired: lights + audio + pepper + last, avgConf: confCount ? confSum / confCount : 0, lights, audio, pepper, last };
   }
   const wk = sumWindow(last7Days);
   const prevWk = sumWindow(prev7Days);
   const detTrend = prevWk.detections ? Math.round(((wk.detections - prevWk.detections) / prevWk.detections) * 100) : null;
-  const effTrend = prevWk.resolvedPct ? wk.resolvedPct - prevWk.resolvedPct : null;
+  const firedTrend = prevWk.fired ? Math.round(((wk.fired - prevWk.fired) / prevWk.fired) * 100) : null;
   const confTrend = prevWk.avgConf ? wk.avgConf - prevWk.avgConf : null;
 
   const weekChartData = last7Days.map((d) => {
     const row = dayMap.get(d.toDateString());
-    return { label: d.toLocaleDateString("en-GB", { weekday: "short" }), detections: row ? row.detections : 0, deterred: row ? row.resolved : 0 };
+    return { label: d.toLocaleDateString("en-GB", { weekday: "short" }), detections: row ? row.detections : 0, deterred: row ? row.lights + row.audio + row.pepper + row.last : 0 };
   });
   const weekMax = Math.max(...weekChartData.flatMap((r) => [r.detections, r.deterred]), 1);
   const triggerMax = Math.max(wk.lights, wk.audio, wk.pepper, wk.last, 1);
@@ -1524,11 +1566,9 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
     URL.revokeObjectURL(url);
   }
   function exportDailyReport() {
-    const rows = [["Date", "Detections", "Resolved", "Escalated", "Resolution Rate", "Avg Confidence", "Lights", "Ultrasonic", "Diffuser", "Horn"]];
+    const rows = [["Date", "Detections", "Avg Confidence", "Lights", "Ultrasonic", "Diffuser", "Horn"]];
     Array.from(dayMap.values()).sort((a, b) => b.dateObj - a.dateObj).forEach((d) => {
-      const resolved = Math.max(d.detections - d.escalated, 0);
-      const total = resolved + d.escalated || 1;
-      rows.push([d.dateStr, d.detections, resolved, d.escalated, Math.round((resolved / total) * 100) + "%", Math.round((d.confCount ? d.confSum / d.confCount : 0) * 100) + "%", d.lights, d.audio, d.pepper, d.last]);
+      rows.push([d.dateStr, d.detections, Math.round((d.confCount ? d.confSum / d.confCount : 0) * 100) + "%", d.lights, d.audio, d.pepper, d.last]);
     });
     downloadCsv(rows, `ratavert-daily-report-${Date.now()}.csv`);
   }
@@ -1549,7 +1589,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
         <div className="an-stat"><div className="an-stat-lbl">Total Detections</div><div className="an-stat-val" style={{ color: "var(--orange)" }}>{ratCount}</div><div className="an-stat-sub">All-time events</div></div>
         <div className="an-stat"><div className="an-stat-lbl">Avg Confidence</div><div className="an-stat-val" style={{ color: "var(--teal)" }}>{Math.round(avgConf * 100)}%</div><div className="an-stat-sub">Per detection</div></div>
         <div className="an-stat"><div className="an-stat-lbl">Deterrences Fired</div><div className="an-stat-val" style={{ color: "var(--accent)" }}>{counts.lights + counts.audio + counts.pepper + counts.last}</div><div className="an-stat-sub">Total actuations</div></div>
-        <div className="an-stat"><div className="an-stat-lbl">Resolution Rate</div><div className="an-stat-val" style={{ color: "var(--accent)" }}>{resolvedPct}%</div><div className="an-stat-sub">Without escalation</div></div>
+        <div className="an-stat"><div className="an-stat-lbl">Detections Today</div><div className="an-stat-val" style={{ color: "var(--accent)" }}>{detectionsToday}</div><div className="an-stat-sub">Since midnight</div></div>
       </div>
 
       <div className="an-row">
@@ -1575,18 +1615,6 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
         </div>
       </div>
 
-      <div className="cc" style={{ marginBottom: 16 }}>
-        <div className="cc-hdr"><span className="cc-title">Deterrence Effectiveness</span></div>
-        <div className="eff-bar-track">
-          <div className="eff-bar-resolved" style={{ width: `${resolvedPct}%` }} />
-          <div className="eff-bar-escalated" style={{ width: `${escalatedPct}%` }} />
-        </div>
-        <div className="eff-legend">
-          <span><b style={{ color: "var(--accent)" }}>■</b> Resolved by Lights/Ultrasonic/Diffuser: <b>{resolvedPct}%</b> ({resolved} events)</span>
-          <span><b style={{ color: "var(--red)" }}>■</b> Escalated to Horn: <b>{escalatedPct}%</b> ({escalated} events)</span>
-        </div>
-      </div>
-
       <div className="cc" style={{ marginBottom: 16 }}><div className="cc-hdr"><span className="cc-title">Trigger Type Distribution</span></div><DonutChart totals={counts} /></div>
 
       <div className="lhdr" style={{ marginBottom: 14 }}>
@@ -1603,10 +1631,10 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
           </div>
         </div>
         <div className="ds-card">
-          <div className="ds-val" style={{ color: "var(--accent)" }}>{wk.resolvedPct}%</div>
-          <div className="ds-lbl">Deterrence Effectiveness</div>
-          <div className={`ds-trend ${effTrend == null ? "flat" : effTrend >= 0 ? "up" : "down"}`}>
-            {effTrend == null ? "— no prior week data" : `${effTrend >= 0 ? "▲ +" : "▼ "}${effTrend}% vs last week`}
+          <div className="ds-val" style={{ color: "var(--accent)" }}>{wk.fired}</div>
+          <div className="ds-lbl">Deterrents Fired</div>
+          <div className={`ds-trend ${firedTrend == null ? "flat" : firedTrend >= 0 ? "up" : "down"}`}>
+            {firedTrend == null ? "— no prior week data" : `${firedTrend >= 0 ? "▲ +" : "▼ "}${firedTrend}% vs last week`}
           </div>
         </div>
         <div className="ds-card">
@@ -1624,7 +1652,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
             <span className="cc-title">Detection Frequency — This Week (Mon–Sun)</span>
             <div style={{ display: "flex", gap: "12px" }}>
               <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--red)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--red)", display: "inline-block" }} />Detections</span>
-              <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--teal)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--teal)", display: "inline-block" }} />Deterred</span>
+              <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--teal)", display: "flex", alignItems: "center", gap: "4px" }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "var(--teal)", display: "inline-block" }} />Deterrents</span>
             </div>
           </div>
           <div className="week-bars">
@@ -1632,7 +1660,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
               <div className="week-col" key={i}>
                 <div className="week-bar-pair">
                   <div className="week-bar" style={{ height: `${Math.round((d.detections / weekMax) * 120) + 2}px`, background: "var(--red)" }} title={`${d.detections} detections`} />
-                  <div className="week-bar" style={{ height: `${Math.round((d.deterred / weekMax) * 120) + 2}px`, background: "var(--teal)" }} title={`${d.deterred} deterred`} />
+                  <div className="week-bar" style={{ height: `${Math.round((d.deterred / weekMax) * 120) + 2}px`, background: "var(--teal)" }} title={`${d.deterred} deterrents fired`} />
                 </div>
                 <span className="week-lbl">{d.label}</span>
               </div>
@@ -1769,6 +1797,54 @@ function AdminPanel({ accountsProps }) {
   );
 }
 
+// ── Notification list (user nav bar) ─────────────────────────────────────────
+function NotificationBell({ logs, deviceLabel }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const alerts = logs.filter((l) => l.isRat).sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 15);
+  const newest = alerts.length ? new Date(alerts[0].ts).getTime() : 0;
+  const [seen, setSeen] = useState(() => {
+    try { return Number(localStorage.getItem("ratavert_notif_seen")) || 0; } catch { return 0; }
+  });
+  const unread = alerts.filter((l) => new Date(l.ts).getTime() > seen).length;
+
+  useEffect(() => {
+    function onDoc(e) { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next && newest) {
+      setSeen(newest);
+      try { localStorage.setItem("ratavert_notif_seen", String(newest)); } catch { /* ignore */ }
+    }
+  }
+
+  return (
+    <div className="notif-wrap" ref={wrapRef}>
+      <button className="nb nb-user notif-btn" onClick={toggle}>
+        Notifications{unread > 0 && <span className="notif-dot">{unread}</span>}
+      </button>
+      {open && (
+        <div className="notif-panel">
+          <div className="notif-hdr">Detection alerts</div>
+          {alerts.length === 0 && <div className="notif-empty">No detection alerts yet.</div>}
+          {alerts.map((l) => (
+            <div className="notif-item" key={l.id}>
+              <div className="notif-title">⚠ Rat detected</div>
+              <div className="notif-meta">{l.dateStr} · {l.tsStr}</div>
+              <div className="notif-meta">{deviceLabel} · confidence {l.confidence != null ? Math.round(l.confidence * 100) + "%" : "—"}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── App Root ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [theme, setTheme] = useState("dark");
@@ -1776,7 +1852,7 @@ export default function App() {
   const [currentUser, setUser] = useState(getStoredUser()?.username || null);
   const [role, setRole] = useState(getStoredUser()?.role || null);
 
-  const [page, setPage] = useState("dashboard");
+  const [page, setPage] = useState(getStoredUser()?.role === "admin" ? "admin" : "dashboard");
   const [logs, setLogs] = useState([]);
   const [chart, setChart] = useState([]);
   const [photos, setPhotos] = useState([]);
@@ -1931,6 +2007,7 @@ export default function App() {
     await api.createAccount(username, password, role);
     await loadAccounts();
   }
+
   async function onSetRole(username, role) {
     try { await api.patchAccount(username, { role }); await loadAccounts(); }
     catch (e) { flashToast(e.message); }
@@ -1939,20 +2016,30 @@ export default function App() {
     try { await api.patchAccount(username, { active }); await loadAccounts(); }
     catch (e) { flashToast(e.message); }
   }
+   async function onDeleteAccount(username, password) {
+    await api.deleteAccount(username, password); // errors show inside the password panel
+    await loadAccounts();
+    flashToast(`Account "${username}" deleted`);
+  }
 
-  const MAIN_NAV = [
-    { key: "dashboard", label: "Dashboard" },
-    { key: "triggers",  label: "Triggers" },
-    { key: "activity",  label: isAdmin ? "Device Reports" : "Activity" },
-    { key: "analytics", label: "Analytics" },
-    { key: "settings",  label: "Settings" },
-  ];
+    const MAIN_NAV = isAdmin
+    ? [
+        { key: "activity", label: "Device Reports" },
+        { key: "settings", label: "Settings" },
+      ]
+    : [
+        { key: "dashboard", label: "Dashboard" },
+        { key: "triggers",  label: "Triggers" },
+        { key: "activity",  label: "Activity" },
+        { key: "analytics", label: "Analytics" },
+        { key: "settings",  label: "Settings" },
+      ];
 
   // ── Screen router ─────────────────────────────────────────────────────
   if (screen === "landing") return <LandingPage onLogin={() => setScreen("login")} theme={theme} onToggleTheme={toggleTheme} />;
   if (screen === "login") return (
     <LoginPage
-      onSuccess={(token, user) => { storeSession(token, user); setUser(user.username); setRole(user.role); setScreen("dashboard"); }}
+      onSuccess={(token, user) => { storeSession(token, user); setUser(user.username); setRole(user.role); setPage(user.role === "admin" ? "admin" : "dashboard"); setScreen("dashboard"); }}
       onBack={() => setScreen("landing")}
       theme={theme}
       onToggleTheme={toggleTheme}
@@ -1967,7 +2054,9 @@ export default function App() {
           <button className="theme-toggle" onClick={toggleTheme}>{theme === "dark" ? "☀ Light" : "☾ Dark"}</button>
           <span className="nav-time">{fmtT(clock)}</span>
           {!isAdmin && <span className={`nb ${rpiConnected ? "nb-rpi" : "nb-off"}`}>{rpiConnected ? "Pi Online" : "Pi Offline"}</span>}
-          <span className={`nb ${isAdmin ? "nb-admin" : "nb-user"}`}>{isAdmin ? "Admin" : "User"}</span>
+          {isAdmin
+            ? <span className="nb nb-admin">Admin</span>
+            : <NotificationBell logs={logs} deviceLabel={`RatAvert Pi${rpiIp ? ` (${rpiIp})` : ""}`} />}
           <div className="nav-user">{currentUser}</div>
           <button className="nav-out" onClick={signOut}>Sign Out</button>
         </div>
@@ -1975,6 +2064,15 @@ export default function App() {
 
       <div className="body">
         <aside className="sidebar">
+            {isAdmin && (
+             <div className="admin-zone">
+              <div className="sb-label admin-lbl">Admin</div>
+              <div className={`sb-item ${page === "admin" ? "active" : ""}`} onClick={() => setPage("admin")}>
+                Admin Panel
+              </div>
+            </div>
+          )}
+
           <div className="sb-section">
             <div className="sb-label">Navigation</div>
             {MAIN_NAV.map((n) => (
@@ -1983,15 +2081,6 @@ export default function App() {
               </div>
             ))}
           </div>
-
-          {isAdmin && (
-            <div className="admin-zone">
-              <div className="sb-label admin-lbl">Admin</div>
-              <div className={`sb-item ${page === "admin" ? "active" : ""}`} onClick={() => setPage("admin")}>
-                Admin Panel
-              </div>
-            </div>
-          )}
 
           <div className="sb-divider" />
 
@@ -2044,7 +2133,7 @@ export default function App() {
               />
             )}
             {page === "admin" && (isAdmin
-              ? <AdminPanel accountsProps={{ accounts, loading: accountsLoading, currentUser, onCreate: onCreateAccount, onSetRole, onToggleActive }} />
+              ? <AdminPanel accountsProps={{ accounts, loading: accountsLoading, currentUser, onCreate: onCreateAccount, onSetRole, onToggleActive, onDelete: onDeleteAccount }} />
               : <AccessDenied />)}
           </div>
         </div>

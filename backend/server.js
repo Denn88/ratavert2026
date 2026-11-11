@@ -168,7 +168,7 @@ function detectionToLogEntry(d) {
     type: isManual ? "capture" : null,
     user: isManual ? d.captured_by || "unknown" : "auto-detect",
     status: "ok",
-    detail: isManual ? "Manual test capture" : "Motion + heat — rat confirmed",
+    detail: isManual ? "Manual test capture" : "Rat confirmed",
     isRat: !isManual,
     isLast: false,
     photoId: photoUrlFor(d.photo_path),
@@ -361,6 +361,32 @@ app.patch(
       vals.push(u);
       await db.query(`UPDATE accounts SET ${sets.join(", ")} WHERE username = $${vals.length}`, vals);
     }
+    broadcast("accounts_changed", {});
+    res.json({ ok: true });
+  })
+);
+
+// Admin deletes an account. Requires the admin's own password as confirmation.
+// The account's device (if any) is unassigned; detection history is kept.
+app.delete(
+  "/api/accounts/:username",
+  requireUser,
+  requireAdmin,
+  wrap(async (req, res) => {
+    const u = req.params.username.toLowerCase();
+    const { password } = req.body || {};
+    if (!password) return res.status(400).json({ error: "Your admin password is required" });
+    const me = await db.one("SELECT password_hash FROM accounts WHERE username = $1", [req.user.username]);
+    if (!me || !(await bcrypt.compare(String(password), me.password_hash))) {
+      return res.status(401).json({ error: "Admin password is incorrect" });
+    }
+    if (u === req.user.username) return res.status(400).json({ error: "You can't delete your own account" });
+    const acc = await db.one("SELECT username FROM accounts WHERE username = $1", [u]);
+    if (!acc) return res.status(404).json({ error: "Account not found" });
+    await db.tx(async (client) => {
+      await client.query("UPDATE device SET owner = NULL WHERE owner = $1", [u]);
+      await client.query("DELETE FROM accounts WHERE username = $1", [u]);
+    });
     broadcast("accounts_changed", {});
     res.json({ ok: true });
   })
