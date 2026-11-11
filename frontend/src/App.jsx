@@ -530,6 +530,18 @@ const css = `
   .react-btn { padding:6px 12px; border-radius:5px; border:1px solid var(--accent); background:rgba(16,185,129,.08);
     color:var(--accent); font-size:12px; cursor:pointer; font-family:var(--font-mono); }
   .react-btn:hover { background:rgba(16,185,129,.16); }
+   .del-btn { padding:6px 12px; border-radius:5px; border:1px solid var(--red); background:transparent;
+    color:var(--red); font-size:12px; cursor:pointer; font-family:var(--font-mono); }
+  .del-btn:hover:not(:disabled) { background:rgba(248,113,113,.12); }
+  .del-btn:disabled { opacity:.35; cursor:not-allowed; }
+  .del-btn.solid { background:var(--red); color:#fff; }
+  .del-btn.solid:hover:not(:disabled) { background:var(--red); opacity:.85; }
+  .modal-back { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+  .modal-box { width:100%; max-width:420px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px; }
+  .modal-title { font-family:var(--font-mono); font-size:13px; letter-spacing:1.5px; text-transform:uppercase; color:var(--red); margin-bottom:12px; }
+  .modal-text { font-size:14px; line-height:1.55; color:var(--text); margin-bottom:16px; }
+  .modal-err { margin-top:10px; font-family:var(--font-mono); font-size:12px; color:var(--red); }
+  .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
 
   /* ANALYTICS PAGE */
   .an-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
@@ -1357,7 +1369,23 @@ function ActivityPage({ logs, photos }) {
 }
 
 // ── Accounts Page (admin) ───────────────────────────────────────────────────
-function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onToggleActive }) {
+function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onToggleActive, onDelete }) {
+  const [delTarget, setDelTarget] = useState(null);
+  const [delStep, setDelStep] = useState(0);
+  const [delPass, setDelPass] = useState("");
+  const [delErr, setDelErr] = useState("");
+  const [delBusy, setDelBusy] = useState(false);
+
+  function openDelete(u) { setDelTarget(u); setDelStep(1); setDelPass(""); setDelErr(""); }
+  function closeDelete() { setDelTarget(null); setDelStep(0); setDelPass(""); setDelErr(""); }
+  async function confirmDelete() {
+    if (!delPass) { setDelErr("Enter your admin password."); return; }
+    setDelBusy(true);
+    try { await onDelete(delTarget, delPass); closeDelete(); }
+    catch (e) { setDelErr(e.message || "Could not delete account."); }
+    finally { setDelBusy(false); }
+  }
+
   const [newUser, setNewUser] = useState("");
   const [newPass, setNewPass] = useState("");
   const [newRole, setNewRole] = useState("user");
@@ -1422,11 +1450,47 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
               </select>
               {acc.active
                 ? <button className="deact-btn" onClick={() => onToggleActive(acc.username, false)} disabled={acc.username === currentUser}>Deactivate</button>
-                : <button className="react-btn" onClick={() => onToggleActive(acc.username, true)}>Reactivate</button>}
+                                : <button className="react-btn" onClick={() => onToggleActive(acc.username, true)}>Reactivate</button>}
+              <button className="del-btn" onClick={() => openDelete(acc.username)} disabled={acc.username === currentUser}>Delete</button>
             </div>
           </div>
         ))}
       </div>
+
+      {delTarget && (
+        <div className="modal-back" onClick={closeDelete}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            {delStep === 1 ? (
+              <>
+                <div className="modal-title">Delete account?</div>
+                <div className="modal-text">
+                  You are about to permanently delete <b>{delTarget}</b>. This cannot be undone. Their device will be unassigned, but the detection history is kept.
+                </div>
+                <div className="modal-actions">
+                  <button className="deact-btn" onClick={closeDelete}>Cancel</button>
+                  <button className="del-btn solid" onClick={() => setDelStep(2)}>Confirm</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="modal-title">Admin password required</div>
+                <div className="modal-text">Enter your admin password to delete <b>{delTarget}</b>.</div>
+                <PasswordField
+                  value={delPass}
+                  placeholder="Your admin password"
+                  onChange={(e) => { setDelPass(e.target.value); setDelErr(""); }}
+                  onKeyDown={(e) => e.key === "Enter" && confirmDelete()}
+                />
+                {delErr && <div className="modal-err">{delErr}</div>}
+                <div className="modal-actions">
+                  <button className="deact-btn" onClick={closeDelete} disabled={delBusy}>Cancel</button>
+                  <button className="del-btn solid" onClick={confirmDelete} disabled={delBusy}>{delBusy ? "Deleting…" : "Delete account"}</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -1952,6 +2016,11 @@ export default function App() {
     try { await api.patchAccount(username, { active }); await loadAccounts(); }
     catch (e) { flashToast(e.message); }
   }
+   async function onDeleteAccount(username, password) {
+    await api.deleteAccount(username, password); // errors show inside the password panel
+    await loadAccounts();
+    flashToast(`Account "${username}" deleted`);
+  }
 
     const MAIN_NAV = isAdmin
     ? [
@@ -2064,7 +2133,7 @@ export default function App() {
               />
             )}
             {page === "admin" && (isAdmin
-              ? <AdminPanel accountsProps={{ accounts, loading: accountsLoading, currentUser, onCreate: onCreateAccount, onSetRole, onToggleActive }} />
+              ? <AdminPanel accountsProps={{ accounts, loading: accountsLoading, currentUser, onCreate: onCreateAccount, onSetRole, onToggleActive, onDelete: onDeleteAccount }} />
               : <AccessDenied />)}
           </div>
         </div>
