@@ -469,13 +469,24 @@ app.delete(
 app.get(
   "/api/status",
   requireUser,
-  wrap(async (req, res) => res.json(await deviceStatusPayload((await userDeviceId(req.user, req.query.device)) || 1)))
+  wrap(async (req, res) => {
+    const id = await userDeviceId(req.user, req.query.device);
+    // A user whose account has no device must not see anyone else's Pi.
+    if (id === 0) {
+      return res.json({ deviceId: null, linked: false, online: false, ip: null, owner: null, last_seen: null, armed: { lights: false, audio: false, pepper: false, last: false } });
+    }
+    res.json(await deviceStatusPayload(id || 1));
+  })
 );
 
 app.get(
   "/api/settings",
   requireUser,
-  wrap(async (req, res) => res.json(await settingsPayload((await userDeviceId(req.user, req.query.device)) || 1)))
+  wrap(async (req, res) => {
+    const id = await userDeviceId(req.user, req.query.device);
+    if (id === 0) return res.json({ ...(await settingsPayload(1)), detecting: false });
+    res.json(await settingsPayload(id || 1));
+  })
 );
 
 app.post(
