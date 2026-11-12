@@ -597,7 +597,8 @@ app.get(
   "/api/logs",
   requireUser,
   wrap(async (req, res) => {
-        const since = toIso(req.query.since);
+          const limit = parseLimit(req.query.limit, 100, 500);
+    const since = toIso(req.query.since);
     const devId = await userDeviceId(req.user, req.query.device);
 
     const [detRows, trgRows] = await Promise.all([
