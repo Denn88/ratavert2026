@@ -317,7 +317,7 @@ app.post("/api/me/password", requireUser, changePassword);
 // events, commands, reports, and everything on the device(s) it owns. Returns the
 // photo file names so the caller can delete them from storage after the commit.
 async function purgeAccountData(client, u) {
-  const devs = (await client.query("SELECT id FROM device WHERE owner = $1", [u])).rows.map((r) => r.id);
+  const devs = (await client.query("SELECT id FROM device WHERE owner = $1 OR reserved_owner = $1", [u])).rows.map((r) => r.id);
   const dets = (
     await client.query("SELECT id, photo_path FROM detections WHERE captured_by = $1 OR device_id = ANY($2::int[])", [u, devs])
   ).rows;
@@ -332,7 +332,8 @@ async function purgeAccountData(client, u) {
   await client.query("DELETE FROM trigger_events WHERE id = ANY($1::text[])", [evIds]);
   await client.query("DELETE FROM detections WHERE id = ANY($1::text[])", [detIds]);
   await client.query("DELETE FROM weekly_reports WHERE device_owner = $1 OR device_id = ANY($2::int[])", [u, devs]);
-  await client.query("UPDATE device SET owner = NULL WHERE owner = $1", [u]);
+  // Remember who this device belongs to, so a new account with the same name is linked automatically.
+  await client.query("UPDATE device SET reserved_owner = $1, owner = NULL WHERE owner = $1", [u]);
   return dets.map((d) => d.photo_path).filter(Boolean);
 }
 
@@ -400,6 +401,10 @@ app.post(
       [u, hash, r, new Date().toISOString()]
     );
     if (!inserted) return res.status(409).json({ error: "That username already exists" });
+    // Auto-link the Pi that was reserved for this username (regular users only).
+    if (r === "user") {
+      await db.query("UPDATE device SET owner = $1 WHERE reserved_owner = $1 AND owner IS NULL", [u]);
+    }
     broadcast("accounts_changed", {});
     res.status(201).json({ username: u, role: r, active: true });
   })
