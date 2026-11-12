@@ -879,6 +879,8 @@ app.post(
 
     const detRow = await db.one("SELECT * FROM detections WHERE id = $1", [id]);
     broadcast("detection", detectionToLogEntry(detRow), req.deviceId);
+    const trgRows = await db.many(`${TRIGGER_SELECT} WHERE t.detection_id = $1 ORDER BY t.created_at`, [id]);
+    for (const t of trgRows) broadcast("trigger_ack", triggerToLogEntry(t), req.deviceId);
     res.status(201).json({ id });
   })
 );
