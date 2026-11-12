@@ -197,7 +197,8 @@ const css = `
     box-shadow:0 10px 30px rgba(0,0,0,.35); }
   .notif-hdr { padding:12px 14px; font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px;
     text-transform:uppercase; color:var(--dim); border-bottom:1px solid var(--border); }
-  .notif-item { padding:11px 14px; border-bottom:1px solid var(--border); }
+  .notif-item { padding:11px 14px; border-bottom:1px solid var(--border); cursor:pointer; }
+  .notif-item:hover { background:rgba(16,185,129,.08); }
   .notif-item:last-child { border-bottom:none; }
   .notif-title { font-size:13px; font-weight:700; color:var(--red); }
   .notif-meta { font-size:12px; color:var(--dim); margin-top:3px; font-family:var(--font-mono); }
@@ -1420,9 +1421,10 @@ function PhotoGallery({ photos, onOpen }) {
 }
 
 // ── Activity page — Log / Photos tabs ───────────────────────────────────────
-function ActivityPage({ logs, photos, deviceLabel }) {
+function ActivityPage({ logs, photos, deviceLabel, openUrl, onOpened }) {
   const [tab, setTab] = useState("log");
-  const [viewUrl, setViewUrl] = useState(null);
+  const [viewUrl, setViewUrl] = useState(openUrl || null);
+  useEffect(() => { if (openUrl) { setViewUrl(openUrl); onOpened && onOpened(); } }, [openUrl]); // eslint-disable-line
   let viewPhoto = null;
   if (viewUrl) {
     const entry = logs.find((l) => l.photoId === viewUrl && l.isRat) || logs.find((l) => l.photoId === viewUrl);
@@ -1880,7 +1882,7 @@ function AdminPanel({ accountsProps }) {
 }
 
 // ── Notification list (user nav bar) ─────────────────────────────────────────
-function NotificationBell({ logs, deviceLabel }) {
+function NotificationBell({ logs, deviceLabel, onOpen }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
   const alerts = logs.filter((l) => l.isRat).sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 15);
@@ -1918,7 +1920,7 @@ function NotificationBell({ logs, deviceLabel }) {
           )}
           {alerts.length === 0 && <div className="notif-empty">No detection alerts yet.</div>}
           {alerts.map((l) => (
-            <div className="notif-item" key={l.id}>
+            <div className="notif-item" key={l.id} role="button" tabIndex={0} onClick={() => { setOpen(false); onOpen && onOpen(l.photoId || null); }} onKeyDown={(e) => { if (e.key === "Enter") { setOpen(false); onOpen && onOpen(l.photoId || null); } }}>
               <div className="notif-title">⚠ Rat detected</div>
               <div className="notif-meta">{l.dateStr} · {l.tsStr}</div>
               <div className="notif-meta">{deviceLabel} · confidence {l.confidence != null ? Math.round(l.confidence * 100) + "%" : "—"}</div>
@@ -1956,6 +1958,7 @@ export default function App() {
   const [rpiOwner, setRpiOwner] = useState(null);
   const [rpiLinked, setRpiLinked] = useState(true);
   const [rpiName, setRpiName] = useState("");
+  const [notifView, setNotifView] = useState(null); // photo opened from a notification
   const rpiNameRef = useRef("");
   rpiNameRef.current = rpiName;
   const scanning = detecting && rpiConnected; // detection only counts while the Pi is online
@@ -2155,7 +2158,7 @@ export default function App() {
           {!isAdmin && <span className={`nb ${rpiConnected ? "nb-rpi" : "nb-off"}`}>{rpiConnected ? "Pi Online" : "Pi Offline"}</span>}
           {isAdmin
             ? <span className="nb nb-admin">Admin</span>
-            : <NotificationBell logs={logs} deviceLabel={rpiName || currentUser || "RatAvert Pi"} />}
+            : <NotificationBell logs={logs} deviceLabel={rpiName || currentUser || "RatAvert Pi"} onOpen={(url) => { setNotifView(url); setPage("activity"); }} />}
           <div className="nav-user">{currentUser}</div>
           <button className="nav-out" onClick={signOut}>Sign Out</button>
         </div>
@@ -2217,7 +2220,7 @@ export default function App() {
               ? <DeviceReportsPage />
               : <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />)}
             {page === "triggers" && <Triggers logs={logs} enabled={enabled} setEnabled={setEnabledOne} onFire={onFire} firingKey={firingKey} rpiConnected={rpiConnected} notice={triggerNotice} />}
-            {page === "activity" && (isAdmin ? <DeviceReportsPage /> : <ActivityPage logs={logs} photos={photos} deviceLabel={rpiName || currentUser || "RatAvert Pi"} />)}
+            {page === "activity" && (isAdmin ? <DeviceReportsPage /> : <ActivityPage logs={logs} photos={photos} deviceLabel={rpiName || currentUser || "RatAvert Pi"} openUrl={notifView} onOpened={() => setNotifView(null)} />)}
             {page === "analytics" && <AnalyticsPage logs={logs} chartData={chart} counts={counts} ratCount={ratCount} />}
             {page === "settings" && (
               <Settings
