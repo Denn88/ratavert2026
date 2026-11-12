@@ -1150,7 +1150,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
     <>
       <div className="status-bar">
         {[
-          { label: "Detection",     val: detecting ? "SCANNING" : "STANDBY",   color: detecting ? "var(--red)" : "var(--dim)",     sub: detecting ? "Sensors active" : "Paused" },
+                    { label: "Detection",     val: !rpiConnected ? "INACTIVE" : detecting ? "SCANNING" : "STANDBY",   color: detecting && rpiConnected ? "var(--red)" : "var(--dim)",     sub: !rpiConnected ? "Pi offline" : detecting ? "Sensors active" : "Paused" },
           { label: "Rats Detected", val: ratCount,                                    color: "var(--red)",                                 sub: "total events" },
           { label: "Photos Saved",  val: photoCount,                                  color: "var(--teal)",                                sub: "see Activity" },
           { label: "Raspberry Pi",  val: rpiConnected ? "ONLINE" : "OFFLINE",   color: rpiConnected ? "var(--accent)" : "var(--red)",sub: rpiConnected ? "Reporting in" : "Not connected" },
@@ -1869,6 +1869,8 @@ export default function App() {
   const [rpiConnected, setRpi] = useState(false);
   const [rpiIp, setRpiIp] = useState("");
   const [rpiOwner, setRpiOwner] = useState(null);
+  const [rpiLinked, setRpiLinked] = useState(true);
+  const scanning = detecting && rpiConnected; // detection only counts while the Pi is online
   const [accounts, setAccounts] = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [toast, setToast] = useState(null);
@@ -1888,7 +1890,7 @@ export default function App() {
       const [status, settings, logsRes, detRes, chartRes] = await Promise.all([
         api.getStatus(), api.getSettings(), api.getLogs({ limit: 150 }), api.getDetections({ limit: 60 }), api.getHourlyAnalytics(),
       ]);
-      setRpi(status.online); setRpiIp(status.ip || ""); setRpiOwner(status.owner || null);
+      setRpi(status.online); setRpiIp(status.ip || ""); setRpiOwner(status.owner || null); setRpiLinked(status.linked !== false);
       setEnabledState(status.armed);
       setDetectingState(settings.detecting); setDetIntState(settings.detectionInterval);
       setLogs(logsRes);
@@ -2090,20 +2092,19 @@ export default function App() {
                 <div className="rpi-lbl">RASPBERRY PI</div>
                 <div className="rpi-stat" style={{ color: rpiConnected ? "var(--accent)" : "var(--red)" }}>
                   <span className="pdot" style={{ background: rpiConnected ? "var(--accent)" : "var(--red)" }} />
-                  {rpiConnected ? "ONLINE" : "OFFLINE"}
+                  {!rpiLinked ? "NOT LINKED" : rpiConnected ? "ONLINE" : "OFFLINE"}
                 </div>
-                <div className="rpi-ip">{rpiIp ? `IP: ${rpiIp}${rpiOwner ? ` · ${rpiOwner}` : ""}` : "Not connected"}</div>
+                                <div className="rpi-ip">{!rpiLinked ? "Pi is missing — please ask the admin to link one to this account" : rpiIp ? `IP: ${rpiIp}${rpiOwner ? ` · ${rpiOwner}` : ""}` : "Pi is not connected"}</div>
               </div>
 
-              <div className={`det-panel ${detecting ? "active" : ""}`}>
+                 <div className={`det-panel ${scanning ? "active" : ""}`}>
                 <div className="det-lbl">DETECTION</div>
-                <div className="det-stat" style={{ color: detecting ? "var(--red)" : "var(--dim)" }}>
-                  <span className="pdot" style={{ background: detecting ? "var(--red)" : "var(--muted)" }} />
-                  {detecting ? "ACTIVE" : "PAUSED"}
+                <div className="det-stat" style={{ color: scanning ? "var(--red)" : "var(--dim)" }}>
+                  <span className="pdot" style={{ background: scanning ? "var(--red)" : "var(--muted)" }} />
+                  {!rpiConnected ? "INACTIVE" : detecting ? "ACTIVE" : "PAUSED"}
                 </div>
                 <div className="det-cnt">{ratCount} detected</div>
-              </div>
-            </>
+              </div>            </>
           )}
 
           <div className="sb-footer">
