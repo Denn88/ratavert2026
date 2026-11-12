@@ -981,7 +981,7 @@ function DeviceReportsPage() {
                 <tr key={l.id}>
                   <td><span className="ts">{l.dateStr}</span></td>
                   <td><span className="ts">{l.tsStr}</span></td>
-                  <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
+                  <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label || (l.type === "vibrate" ? "Vibrate" : l.type)}</span>}</td>
                   <td>{statusBadge(l.status)}</td>
                   <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.confidence != null ? Math.round(l.confidence * 100) + "%" : "—"}</td>
                   <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
@@ -1200,7 +1200,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
             {logs.slice(0, 8).map((l, i) => (
               <tr key={l.id} className={`${i === 0 ? "new-r" : ""} ${l.isRat ? "rat-r" : ""} ${l.isLast ? "lst-r" : ""}`}>
                 <td><span className="ts">{l.dateStr} {l.tsStr}</span></td>
-                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
+                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label || (l.type === "vibrate" ? "Vibrate" : l.type)}</span>}</td>
                 <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.user}</td>
                 <td>{statusBadge(l.status)}</td>
                 <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
@@ -1304,7 +1304,7 @@ function ActivityLogTable({ logs, onViewPhoto }) {
               <tr key={l.id} className={`${i === 0 && pg === 0 ? "new-r" : ""} ${l.isRat ? "rat-r" : ""} ${l.isLast ? "lst-r" : ""}`}>
                 <td><span className="ts">{l.dateStr}</span></td>
                 <td><span className="ts">{l.tsStr}</span></td>
-                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label}</span>}</td>
+                <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label || (l.type === "vibrate" ? "Vibrate" : l.type)}</span>}</td>
                 <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.user}</td>
                 <td>{statusBadge(l.status)}</td>
                 <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
