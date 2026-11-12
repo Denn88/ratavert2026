@@ -407,6 +407,7 @@ const css = `
   .tba  { background:rgba(252,211,77,.1);  color:var(--yellow); }
   .tbp  { background:rgba(110,231,183,.1); color:var(--green2); }
   .tblr { background:rgba(248,113,113,.1); color:var(--red); }
+  .tbv  { background:rgba(167,139,250,.1); color:#A78BFA; }
   .tbd  { background:rgba(251,146,60,.1);  color:var(--orange); }
   .tbc  { background:rgba(56,189,248,.1);  color:#38BDF8; }
   .sok  { color:var(--accent); font-size:11px; font-family:var(--font-mono); }
@@ -621,12 +622,13 @@ stEl.textContent = css;
 document.head.appendChild(stEl);
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const TRIGGER_TYPES = ["lights", "audio", "pepper", "last"];
+const TRIGGER_TYPES = ["lights", "audio", "pepper", "last", "vibrate"];
 const TYPE_META = {
   lights: { label: "Lights",     icon: "💡", cls: "tbl",  color: "#10B981" },
   audio:  { label: "Ultrasonic", icon: "📡", cls: "tba",  color: "#FCD34D" },
   pepper: { label: "Diffuser",   icon: "💨", cls: "tbp",  color: "#6EE7B7" },
   last:   { label: "Horn",       icon: "📢", cls: "tblr", color: "#F87171" },
+  vibrate:{ label: "Vibrate",    icon: "📳", cls: "tbv",  color: "#A78BFA" },
   capture:{ label: "Test Capture",icon: "📸", cls: "tbc", color: "#38BDF8" },
 };
 const AUTO_SEQ = ["lights", "audio", "pepper"];
@@ -811,7 +813,7 @@ function LoginPage({ onSuccess, onBack, theme, onToggleTheme }) {
 function LineChart({ data }) {
   const W = 600, H = 140, p = { t: 8, r: 8, b: 26, l: 26 };
   const iW = W - p.l - p.r, iH = H - p.t - p.b, n = data.length;
-  const mx = Math.max(...data.flatMap((d) => [d.lights, d.audio, d.pepper, d.last]), 1);
+  const mx = Math.max(...data.flatMap((d) => [d.lights, d.audio, d.pepper, d.last, d.vibrate || 0]), 1);
   const pts = (k) => data.map((d, i) => [p.l + (i / (n - 1)) * iW, p.t + iH - (d[k] / mx) * iH]);
   const path = (k) => pts(k).map((pt, i) => `${i === 0 ? "M" : "L"} ${pt[0].toFixed(1)} ${pt[1].toFixed(1)}`).join(" ");
   const area = (k) => { const pp = pts(k); return pp.map((pt, i) => `${i === 0 ? "M" : "L"} ${pt[0].toFixed(1)} ${pt[1].toFixed(1)}`).join(" ") + ` L ${(p.l + iW).toFixed(1)} ${(p.t + iH).toFixed(1)} L ${p.l.toFixed(1)} ${(p.t + iH).toFixed(1)} Z`; };
@@ -1164,7 +1166,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
       <div className="metrics">
         {[
           { cls: "mc1", label: "Triggers Today", val: today, sub: <span className="badge bg">all sources</span> },
-          { cls: "mc2", label: "Armed Devices",  val: Object.values(enabled).filter(Boolean).length, sub: <span style={{ color: "var(--teal)" }}>of 4</span> },
+          { cls: "mc2", label: "Armed Devices",  val: Object.values(enabled).filter(Boolean).length, sub: <span style={{ color: "var(--teal)" }}>of 5</span> },
           { cls: "mc3", label: "Last Trigger",   val: lastTs ? lastTs.tsStr : "--:--", sm: true, sub: lastTs ? (lastTs.isRat ? "Rat detected" : `${TYPE_META[lastTs.type]?.label || ""}`) : "—" },
           { cls: "mc4", label: "Rats Detected",  val: ratCount, sub: <span className="badge br">confirmed</span> },
         ].map((m, i) => (
@@ -1219,13 +1221,14 @@ function Triggers({ enabled, setEnabled, logs, onFire, firingKey, rpiConnected, 
     { key: "audio",  name: "Ultrasonic",  desc: "Ultrasonic emitter",  danger: false },
     { key: "pepper", name: "Diffuser",    desc: "Release scent",       danger: false },
     { key: "last",   name: "Horn",        desc: "Alarm horn",          danger: false },
+    { key: "vibrate", name: "Vibrate",    desc: "Vibration shaker",    danger: false },
   ];
   const lastFor = (k) => logs.find((l) => l.type === k && !l.isRat);
   return (
     <>
       <div style={{ marginBottom: "16px", padding: "12px 16px", background: "rgba(16,185,129,.06)", border: "1px solid rgba(16,185,129,.18)", borderRadius: "8px" }}>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "var(--accent)", marginBottom: "3px", letterSpacing: "1px" }}>AUTOMATIC RESPONSE</div>
-        <div style={{ fontSize: "13px", color: "var(--dim)" }}>When the Pi confirms a rat, it picks one deterrent (Lights, Ultrasonic, Diffuser or Horn), a different one each time. You can also test-fire any armed deterrent manually — the Pi is the one that actually performs the action and acknowledges it back here.</div>
+        <div style={{ fontSize: "13px", color: "var(--dim)" }}>When the Pi confirms a rat, it picks one deterrent (Lights, Ultrasonic, Diffuser, Horn or Vibrate), a different one each time. You can also test-fire any armed deterrent manually — the Pi is the one that actually performs the action and acknowledges it back here.</div>
       </div>
       {!rpiConnected && (
         <div style={{ marginBottom: 16, padding: "10px 16px", background: "rgba(248,113,113,.06)", border: "1px solid rgba(248,113,113,.2)", borderRadius: 8, color: "var(--red)", fontSize: 13, fontFamily: "var(--font-mono)" }}>
@@ -1288,7 +1291,7 @@ function ActivityLogTable({ logs, onViewPhoto }) {
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
           <input className="lsearch" placeholder="Search…" value={search} onChange={(e) => { setSearch(e.target.value); setPg(0); }} />
           <div className="lfilters">
-            {["all", "rat", "lights", "audio", "pepper", "last"].map((f) => (
+            {["all", "rat", "lights", "audio", "pepper", "last", "vibrate"].map((f) => (
               <button key={f} className={`fb ${filter === f ? "on" : ""}`} onClick={() => { setFilter(f); setPg(0); }}>
                 {f === "all" ? "ALL" : f === "rat" ? "RAT" : TYPE_META[f]?.label.toUpperCase()}
               </button>
@@ -1518,7 +1521,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
     if (!dayMap.has(dayKey)) {
       dayMap.set(dayKey, {
         dayKey, dateStr: l.dateStr, dateObj: new Date(tsDate.getFullYear(), tsDate.getMonth(), tsDate.getDate()),
-        detections: 0, lights: 0, audio: 0, pepper: 0, last: 0, confSum: 0, confCount: 0,
+        detections: 0, lights: 0, audio: 0, pepper: 0, last: 0, vibrate: 0, confSum: 0, confCount: 0,
       });
     }
     const d = dayMap.get(dayKey);
@@ -1534,15 +1537,15 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
   const last7Days = Array.from({ length: 7 }, (_, i) => dayAt(monday, i));           // this week, Mon → Sun
   const prev7Days = Array.from({ length: 7 }, (_, i) => dayAt(monday, i - 7));       // previous week, Mon → Sun
   function sumWindow(days) {
-    let detections = 0, confSum = 0, confCount = 0, lights = 0, audio = 0, pepper = 0, last = 0;
+    let detections = 0, confSum = 0, confCount = 0, lights = 0, audio = 0, pepper = 0, last = 0, vibrate = 0;
     days.forEach((d) => {
       const row = dayMap.get(d.toDateString());
       if (!row) return;
       detections += row.detections;
-      lights += row.lights; audio += row.audio; pepper += row.pepper; last += row.last;
+      lights += row.lights; audio += row.audio; pepper += row.pepper; last += row.last; vibrate += row.vibrate || 0;
       confSum += row.confSum; confCount += row.confCount;
     });
-    return { detections, fired: lights + audio + pepper + last, avgConf: confCount ? confSum / confCount : 0, lights, audio, pepper, last };
+    return { detections, fired: lights + audio + pepper + last + vibrate, avgConf: confCount ? confSum / confCount : 0, lights, audio, pepper, last, vibrate };
   }
   const wk = sumWindow(last7Days);
   const prevWk = sumWindow(prev7Days);
@@ -1552,10 +1555,10 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
 
   const weekChartData = last7Days.map((d) => {
     const row = dayMap.get(d.toDateString());
-    return { label: d.toLocaleDateString("en-GB", { weekday: "short" }), detections: row ? row.detections : 0, deterred: row ? row.lights + row.audio + row.pepper + row.last : 0 };
+    return { label: d.toLocaleDateString("en-GB", { weekday: "short" }), detections: row ? row.detections : 0, deterred: row ? row.lights + row.audio + row.pepper + row.last + (row.vibrate || 0) : 0 };
   });
   const weekMax = Math.max(...weekChartData.flatMap((r) => [r.detections, r.deterred]), 1);
-  const triggerMax = Math.max(wk.lights, wk.audio, wk.pepper, wk.last, 1);
+  const triggerMax = Math.max(wk.lights, wk.audio, wk.pepper, wk.last, wk.vibrate, 1);
 
   function downloadCsv(rows, filename) {
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -1566,9 +1569,9 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
     URL.revokeObjectURL(url);
   }
   function exportDailyReport() {
-    const rows = [["Date", "Detections", "Avg Confidence", "Lights", "Ultrasonic", "Diffuser", "Horn"]];
+    const rows = [["Date", "Detections", "Avg Confidence", "Lights", "Ultrasonic", "Diffuser", "Horn", "Vibrate"]];
     Array.from(dayMap.values()).sort((a, b) => b.dateObj - a.dateObj).forEach((d) => {
-      rows.push([d.dateStr, d.detections, Math.round((d.confCount ? d.confSum / d.confCount : 0) * 100) + "%", d.lights, d.audio, d.pepper, d.last]);
+      rows.push([d.dateStr, d.detections, Math.round((d.confCount ? d.confSum / d.confCount : 0) * 100) + "%", d.lights, d.audio, d.pepper, d.last, d.vibrate || 0]);
     });
     downloadCsv(rows, `ratavert-daily-report-${Date.now()}.csv`);
   }
@@ -1588,7 +1591,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
       <div className="an-grid">
         <div className="an-stat"><div className="an-stat-lbl">Total Detections</div><div className="an-stat-val" style={{ color: "var(--orange)" }}>{ratCount}</div><div className="an-stat-sub">All-time events</div></div>
         <div className="an-stat"><div className="an-stat-lbl">Avg Confidence</div><div className="an-stat-val" style={{ color: "var(--teal)" }}>{Math.round(avgConf * 100)}%</div><div className="an-stat-sub">Per detection</div></div>
-        <div className="an-stat"><div className="an-stat-lbl">Deterrences Fired</div><div className="an-stat-val" style={{ color: "var(--accent)" }}>{counts.lights + counts.audio + counts.pepper + counts.last}</div><div className="an-stat-sub">Total actuations</div></div>
+        <div className="an-stat"><div className="an-stat-lbl">Deterrences Fired</div><div className="an-stat-val" style={{ color: "var(--accent)" }}>{counts.lights + counts.audio + counts.pepper + counts.last + counts.vibrate}</div><div className="an-stat-sub">Total actuations</div></div>
         <div className="an-stat"><div className="an-stat-lbl">Detections Today</div><div className="an-stat-val" style={{ color: "var(--accent)" }}>{detectionsToday}</div><div className="an-stat-sub">Since midnight</div></div>
       </div>
 
@@ -1675,6 +1678,7 @@ function AnalyticsPage({ logs, chartData, counts, ratCount }) {
               { label: "Ultrasonic", val: wk.audio,  color: TYPE_META.audio.color },
               { label: "Diffuser",  val: wk.pepper, color: TYPE_META.pepper.color },
               { label: "Horn",      val: wk.last,   color: TYPE_META.last.color },
+              { label: "Vibrate",   val: wk.vibrate, color: TYPE_META.vibrate.color },
             ].map((row) => (
               <div className="hbar-row" key={row.label}>
                 <span className="hbar-icon-lbl">{row.label}</span>
@@ -1765,7 +1769,7 @@ function Settings({ enabled, setEnabled, detecting, setDetecting }) {
             <div className={`tog ${detecting ? "on" : ""} red`} onClick={() => setDetecting(!detecting)} style={{ cursor: "pointer" }} />
           </div>
         </div>
-        <div className="srow"><div><div className="sn">Deterrence</div><div className="sd">Lights - Ultrasonic - Diffuser - Horn</div></div></div>
+        <div className="srow"><div><div className="sn">Deterrence</div><div className="sd">Lights - Ultrasonic - Diffuser - Horn - Vibrate</div></div></div>
       </div>
 
       <div className="scard">
@@ -1856,7 +1860,7 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const [chart, setChart] = useState([]);
   const [photos, setPhotos] = useState([]);
-  const [enabled, setEnabledState] = useState({ lights: true, audio: true, pepper: true, last: true });
+  const [enabled, setEnabledState] = useState({ lights: true, audio: true, pepper: true, last: true, vibrate: true });
   const [clock, setClock] = useState(new Date());
   const [ratAlert, setRatAlert] = useState(false);
   const [seqStep, setSeqStep] = useState(0);
@@ -1960,6 +1964,7 @@ export default function App() {
     audio: logs.filter((l) => l.type === "audio").length,
     pepper: logs.filter((l) => l.type === "pepper").length,
     last: logs.filter((l) => l.type === "last").length,
+    vibrate: logs.filter((l) => l.type === "vibrate").length,
   };
 
   function signOut() {

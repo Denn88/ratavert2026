@@ -162,6 +162,7 @@ async function deviceStatusPayload(deviceId = 1) {
       audio: !!d.armed_audio,
       pepper: !!d.armed_pepper,
       last: !!d.armed_last,
+      vibrate: !!d.armed_vibrate,
     },
     last_seen: d.last_seen,
   };
@@ -473,7 +474,7 @@ app.get(
     const id = await userDeviceId(req.user, req.query.device);
     // A user whose account has no device must not see anyone else's Pi.
     if (id === 0) {
-      return res.json({ deviceId: null, linked: false, online: false, ip: null, owner: null, last_seen: null, armed: { lights: false, audio: false, pepper: false, last: false } });
+      return res.json({ deviceId: null, linked: false, online: false, ip: null, owner: null, last_seen: null, armed: { lights: false, audio: false, pepper: false, last: false, vibrate: false } });
     }
     res.json(await deviceStatusPayload(id || 1));
   })
@@ -507,9 +508,10 @@ app.post(
            armed_lights = COALESCE($1::boolean, armed_lights),
            armed_audio  = COALESCE($2::boolean, armed_audio),
            armed_pepper = COALESCE($3::boolean, armed_pepper),
-           armed_last   = COALESCE($4::boolean, armed_last)
-         WHERE id = $5`,
-        [flag(armed.lights), flag(armed.audio), flag(armed.pepper), flag(armed.last), devId]
+           armed_last   = COALESCE($4::boolean, armed_last),
+           armed_vibrate = COALESCE($5::boolean, armed_vibrate)
+         WHERE id = $6`,
+        [flag(armed.lights), flag(armed.audio), flag(armed.pepper), flag(armed.last), flag(armed.vibrate), devId]
       );
     }
     const status = await deviceStatusPayload(devId);
@@ -566,9 +568,12 @@ app.post(
   requireUser,
   wrap(async (req, res) => {
     const { type, duration } = req.body || {};
-    if (!["lights", "audio", "pepper", "last"].includes(type)) return res.status(400).json({ error: "Invalid trigger type" });
+    const ARMED_COL = { lights: "armed_lights", audio: "armed_audio", pepper: "armed_pepper", last: "armed_last", vibrate: "armed_vibrate" };
+    if (!ARMED_COL[type]) return res.status(400).json({ error: "Invalid trigger type" });
     const devId = (await userDeviceId(req.user, req.body && req.body.device)) || (req.user.role === "admin" ? 1 : 0);
     if (!devId) return res.status(403).json({ error: "No device is assigned to your account" });
+    const armedRow = await db.one(`SELECT ${ARMED_COL[type]} AS armed FROM device WHERE id = $1`, [devId]);
+    if (!armedRow || !armedRow.armed) return res.status(409).json({ error: "That deterrent is disarmed. Arm it first." });
     const key = `${req.user.username}:${type}`;
     const last = lastFired.get(key) || 0;
     if (Date.now() - last < TRIGGER_COOLDOWN_MS) {
@@ -686,7 +691,7 @@ app.get(
       const h = new Date();
       h.setMinutes(0, 0, 0);
       h.setHours(h.getHours() - (23 - i));
-      return { label: `${String(h.getHours()).padStart(2, "0")}:00`, lights: 0, audio: 0, pepper: 0, last: 0, _h: h };
+      return { label: `${String(h.getHours()).padStart(2, "0")}:00`, lights: 0, audio: 0, pepper: 0, last: 0, vibrate: 0, _h: h };
     });
     rows.forEach((r) => {
       const t = new Date(r.created_at);
@@ -832,8 +837,11 @@ app.post(
         req.deviceId,
       ]
     );
-    broadcast("status", await deviceStatusPayload(req.deviceId), req.deviceId);
-    res.json({ ok: true });
+    const status = await deviceStatusPayload(req.deviceId);
+    broadcast("status", status, req.deviceId);
+    // The Pi reads these back so it only fires deterrents that are armed.
+    const settings = await settingsPayload(req.deviceId);
+    res.json({ ok: true, armed: status.armed, detecting: settings.detecting });
   })
 );
 
