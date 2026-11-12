@@ -51,7 +51,7 @@ function parseLimit(value, fallback, max) {
   const n = Math.floor(Number(value));
   return Math.min(Number.isFinite(n) && n > 0 ? n : fallback, max);
 }
-// Express 4 does not catch errors from async handlers, so every async route goes through this.
+// All of the account's data and photo captures are deleted with it; its device is unassigned.
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 const app = express();
@@ -312,6 +312,37 @@ const changePassword = wrap(async (req, res) => {
 app.post("/api/auth/change-password", requireUser, changePassword);
 app.post("/api/me/password", requireUser, changePassword);
 
+// Removes every record that belongs to an account: its manual captures, trigger
+// events, commands, reports, and everything on the device(s) it owns. Returns the
+// photo file names so the caller can delete them from storage after the commit.
+async function purgeAccountData(client, u) {
+  const devs = (await client.query("SELECT id FROM device WHERE owner = $1", [u])).rows.map((r) => r.id);
+  const dets = (
+    await client.query("SELECT id, photo_path FROM detections WHERE captured_by = $1 OR device_id = ANY($2::int[])", [u, devs])
+  ).rows;
+  const detIds = dets.map((d) => d.id);
+  const evIds = (
+    await client.query(
+      "SELECT id FROM trigger_events WHERE requested_by = $1 OR device_id = ANY($2::int[]) OR detection_id = ANY($3::text[])",
+      [u, devs, detIds]
+    )
+  ).rows.map((r) => r.id);
+  await client.query("DELETE FROM commands WHERE trigger_event_id = ANY($1::text[]) OR device_id = ANY($2::int[])", [evIds, devs]);
+  await client.query("DELETE FROM trigger_events WHERE id = ANY($1::text[])", [evIds]);
+  await client.query("DELETE FROM detections WHERE id = ANY($1::text[])", [detIds]);
+  await client.query("DELETE FROM weekly_reports WHERE device_owner = $1 OR device_id = ANY($2::int[])", [u, devs]);
+  await client.query("UPDATE device SET owner = NULL WHERE owner = $1", [u]);
+  return dets.map((d) => d.photo_path).filter(Boolean);
+}
+
+// Best effort: a failed storage delete must not undo a finished account delete.
+async function removePhotos(names) {
+  for (let i = 0; i < names.length; i += 100) {
+    const { error } = await photoBucket().remove(names.slice(i, i + 100));
+    if (error) console.warn("[storage] could not remove photos:", error.message);
+  }
+}
+
 // ══════════════════════════════════════ ACCOUNTS (admin) ═════════════════════
 app.get(
   "/api/accounts",
@@ -321,9 +352,11 @@ app.get(
     const rows = await db.many(
       `SELECT a.username, a.role, a.active, a.created_at,
               (SELECT COUNT(*)::int FROM trigger_events t
-                WHERE t.requested_by = a.username AND t.source = 'manual') AS triggers_fired,
+                WHERE t.requested_by = a.username AND t.source = 'manual'
+                  AND t.created_at >= a.created_at) AS triggers_fired,
               (SELECT MAX(t.created_at) FROM trigger_events t
-                WHERE t.requested_by = a.username) AS last_activity
+                                WHERE t.requested_by = a.username
+                  AND t.created_at >= a.created_at) AS last_activity
          FROM accounts a
         ORDER BY a.created_at ASC, a.username ASC`
     );
@@ -351,6 +384,15 @@ app.post(
     if (!u) return res.status(400).json({ error: "Username and password required" });
     const r = role === "admin" ? "admin" : "user";
     const hash = await bcrypt.hash(String(password), 10);
+    if (await db.one("SELECT 1 FROM accounts WHERE username = $1", [u])) {
+      return res.status(409).json({ error: "That username already exists" });
+    }
+    // A brand-new account must start empty: clear any records left under this name.
+    let stale = [];
+    await db.tx(async (client) => {
+      stale = await purgeAccountData(client, u);
+    });
+    removePhotos(stale).catch(() => {});
     const inserted = await db.one(
       `INSERT INTO accounts (username, password_hash, role, active, created_at)
        VALUES ($1,$2,$3,true,$4) ON CONFLICT (username) DO NOTHING RETURNING username`,
@@ -412,10 +454,12 @@ app.delete(
     if (u === req.user.username) return res.status(400).json({ error: "You can't delete your own account" });
     const acc = await db.one("SELECT username FROM accounts WHERE username = $1", [u]);
     if (!acc) return res.status(404).json({ error: "Account not found" });
+        let photos = [];
     await db.tx(async (client) => {
-      await client.query("UPDATE device SET owner = NULL WHERE owner = $1", [u]);
+      photos = await purgeAccountData(client, u);
       await client.query("DELETE FROM accounts WHERE username = $1", [u]);
     });
+    await removePhotos(photos);
     broadcast("accounts_changed", {});
     res.json({ ok: true });
   })
