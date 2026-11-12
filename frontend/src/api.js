@@ -81,7 +81,7 @@ export const api = {
   generateWeeklyReportNow: () => request("/api/admin/weekly-reports/generate", { method: "POST" }),
 
   getAccounts: () => request("/api/accounts"),
-  createAccount: (username, password, role) => request("/api/accounts", { method: "POST", body: { username, password, role } }),
+  createAccount: (username, password, role, deviceCode) => request("/api/accounts", { method: "POST", body: { username, password, role, deviceCode } }),
   patchAccount: (username, patch) => request(`/api/accounts/${encodeURIComponent(username)}`, { method: "PATCH", body: patch }),
   deleteAccount: (username, password) => request(`/api/accounts/${encodeURIComponent(username)}`, { method: "DELETE", body: { password } }),
 

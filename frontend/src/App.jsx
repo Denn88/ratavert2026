@@ -1392,6 +1392,7 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
   const [newUser, setNewUser] = useState("");
   const [newPass, setNewPass] = useState("");
   const [newRole, setNewRole] = useState("user");
+  const [newCode, setNewCode] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -1400,8 +1401,8 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
     if (!u || !newPass) { setErr("Username and password are required."); return; }
     setBusy(true);
     try {
-      await onCreate(u, newPass, newRole);
-      setNewUser(""); setNewPass(""); setNewRole("user"); setErr("");
+      await onCreate(u, newPass, newRole, newCode);
+      setNewUser(""); setNewPass(""); setNewRole("user"); setNewCode(""); setErr("");
     } catch (e) {
       setErr(e.message || "Could not create account.");
     } finally {
@@ -1426,6 +1427,9 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
             <option value="admin">Admin (full access)</option>
           </select>
         </div>
+        {newRole === "user" && (
+          <div className="af-field"><span className="af-lbl">DEVICE CODE (OPTIONAL)</span><input className="af-in" value={newCode} onChange={(e) => { setNewCode(e.target.value); setErr(""); }} placeholder="e.g. RV-XXXX-XXXX-XXXX" autoComplete="off" /></div>
+        )}
         <button className="af-btn" onClick={addAccount} disabled={busy}>{busy ? "Creating…" : "+ Create Account"}</button>
         {err && <span style={{ color: "var(--red)", fontSize: "13px", fontFamily: "var(--font-mono)" }}>{err}</span>}
       </div>
@@ -2010,8 +2014,8 @@ export default function App() {
     setRpiIp(""); setRpiOwner(null); setRpi(false);
   }
 
-  async function onCreateAccount(username, password, role) {
-    await api.createAccount(username, password, role);
+  async function onCreateAccount(username, password, role, deviceCode) {
+    await api.createAccount(username, password, role, deviceCode);
     await loadAccounts();
   }
 
