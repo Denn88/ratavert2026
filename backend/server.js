@@ -89,29 +89,54 @@ function requireAdmin(req, res, next) {
   if (req.user.role !== "admin") return res.status(403).json({ error: "Admin access required" });
   next();
 }
-function requireDevice(req, res, next) {
+// Each Pi identifies itself with X-Device-Id (defaults to device 1, so the
+// existing Pi keeps working unchanged) and X-Device-Key (the shared key, or the
+// device's own device_key).
+const requireDevice = wrap(async (req, res, next) => {
   const key = req.headers["x-device-key"];
-  if (!key || key !== DEVICE_KEY) return res.status(401).json({ error: "Invalid device key" });
+  const id = parseInt(req.headers["x-device-id"], 10) || 1;
+  const d = await db.one("SELECT id, device_key FROM device WHERE id = $1", [id]);
+  if (!d) return res.status(401).json({ error: "Unknown device" });
+  if (!key || (key !== DEVICE_KEY && key !== d.device_key)) return res.status(401).json({ error: "Invalid device key" });
+  req.deviceId = d.id;
   next();
+});
+
+// Which device a logged-in user may see. Admin: a chosen device, or null = all.
+// User: only the device whose owner is their username (0 = none, sees nothing).
+async function userDeviceId(user, requested) {
+  if (user.role === "admin") return Number(requested) || null;
+  const d = await db.one("SELECT id FROM device WHERE owner = $1 ORDER BY id LIMIT 1", [user.username]);
+  return d ? d.id : 0;
 }
 
 // ── WebSocket hub ────────────────────────────────────────────────────────────
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws/events" });
-function broadcast(type, payload) {
+// deviceId (optional) limits the event to admins and to that device's owner.
+function broadcast(type, payload, deviceId) {
   const msg = JSON.stringify({ type, payload });
   wss.clients.forEach((client) => {
-    if (client.readyState === 1) client.send(msg);
+    if (client.readyState !== 1) return;
+    if (deviceId != null && client.role !== "admin" && client.deviceId !== deviceId) return;
+    client.send(msg);
   });
 }
-wss.on("connection", (ws, req) => {
+wss.on("connection", async (ws, req) => {
   const url = new URL(req.url, "http://localhost");
   const token = url.searchParams.get("token");
+  let payload;
   try {
-    jwt.verify(token, JWT_SECRET);
+    payload = jwt.verify(token, JWT_SECRET);
   } catch {
     ws.close(4001, "unauthorized");
     return;
+  }
+  ws.role = payload.role;
+  try {
+    ws.deviceId = await userDeviceId({ username: payload.username, role: payload.role });
+  } catch {
+    ws.deviceId = 0;
   }
   ws.isAlive = true;
   ws.on("pong", () => (ws.isAlive = true));
@@ -124,9 +149,11 @@ setInterval(() => {
   });
 }, 15000);
 
-async function deviceStatusPayload() {
-  const d = (await db.one("SELECT * FROM device WHERE id = 1")) || {};
+async function deviceStatusPayload(deviceId = 1) {
+  const d = (await db.one("SELECT * FROM device WHERE id = $1", [deviceId])) || {};
   return {
+    deviceId: d.id,
+    name: d.name || null,
     online: !!d.online,
     ip: d.ip,
     owner: d.owner,
@@ -139,9 +166,10 @@ async function deviceStatusPayload() {
     last_seen: d.last_seen,
   };
 }
-async function settingsPayload() {
+async function settingsPayload(deviceId = 1) {
   const s = (await db.one("SELECT * FROM settings WHERE id = 1")) || {};
-  return { detecting: !!s.detecting, detectionInterval: s.detection_interval };
+  const d = (await db.one("SELECT detecting FROM device WHERE id = $1", [deviceId])) || {};
+  return { detecting: d.detecting == null ? !!s.detecting : !!d.detecting, detectionInterval: s.detection_interval };
 }
 
 function fmtT(iso) {
@@ -202,17 +230,17 @@ function triggerToLogEntry(t) {
 // table, covering the 7 days up to "now". This is what backs the admin's
 // Device Reports (Weekly tab) — a frozen record, not a live query, so past
 // weeks stay stable even as new detections/triggers keep coming in.
-async function generateWeeklyReport() {
+async function generateWeeklyReport(deviceId = 1) {
   const now = new Date();
   const sinceIso = new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString();
   const nowIso = now.toISOString();
 
-  const device = (await db.one("SELECT * FROM device WHERE id = 1")) || {};
+  const device = (await db.one("SELECT * FROM device WHERE id = $1", [deviceId])) || {};
   const detRows = await db.many(
-    `SELECT * FROM detections WHERE "timestamp" >= $1 AND source != 'manual' ORDER BY "timestamp" DESC`,
-    [sinceIso]
+    `SELECT * FROM detections WHERE "timestamp" >= $1 AND source != 'manual' AND device_id = $2 ORDER BY "timestamp" DESC`,
+    [sinceIso, deviceId]
   );
-  const trgRows = await db.many(`${TRIGGER_SELECT} WHERE t.created_at >= $1 ORDER BY t.created_at DESC`, [sinceIso]);
+  const trgRows = await db.many(`${TRIGGER_SELECT} WHERE t.created_at >= $1 AND t.device_id = $2 ORDER BY t.created_at DESC`, [sinceIso, deviceId]);
 
   const entries = [...detRows.map(detectionToLogEntry), ...trgRows.map(triggerToLogEntry)].sort(
     (a, b) => new Date(b.ts) - new Date(a.ts)
@@ -232,8 +260,8 @@ async function generateWeeklyReport() {
   await db.query(
     `INSERT INTO weekly_reports
        (id, device_owner, device_ip, period_since, period_until, generated_at,
-        detections_total, detections_escalated, deterrence_json, entries_json)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb)`,
+        detections_total, detections_escalated, deterrence_json, entries_json, device_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11)`,
     [
       id,
       device.owner || null,
@@ -245,6 +273,7 @@ async function generateWeeklyReport() {
       detections_escalated,
       JSON.stringify(deterrence),
       JSON.stringify(entries),
+      deviceId,
     ]
   );
   return id;
@@ -393,16 +422,26 @@ app.delete(
 );
 
 // ══════════════════════════════════════ STATUS / SETTINGS ═══════════════════
-app.get("/api/status", requireUser, wrap(async (req, res) => res.json(await deviceStatusPayload())));
+app.get(
+  "/api/status",
+  requireUser,
+  wrap(async (req, res) => res.json(await deviceStatusPayload((await userDeviceId(req.user, req.query.device)) || 1)))
+);
 
-app.get("/api/settings", requireUser, wrap(async (req, res) => res.json(await settingsPayload())));
+app.get(
+  "/api/settings",
+  requireUser,
+  wrap(async (req, res) => res.json(await settingsPayload((await userDeviceId(req.user, req.query.device)) || 1)))
+);
 
 app.post(
   "/api/settings",
   requireUser,
   wrap(async (req, res) => {
-    const { detecting, detectionInterval, armed } = req.body || {};
-    if (typeof detecting === "boolean") await db.query("UPDATE settings SET detecting = $1 WHERE id = 1", [detecting]);
+        const { detecting, detectionInterval, armed } = req.body || {};
+    const devId = (await userDeviceId(req.user, req.body && req.body.device)) || (req.user.role === "admin" ? 1 : 0);
+    if (!devId) return res.status(403).json({ error: "No device is assigned to your account" });
+    if (typeof detecting === "boolean") await db.query("UPDATE device SET detecting = $1 WHERE id = $2", [detecting, devId]);
     if (Number.isFinite(detectionInterval)) {
       await db.query("UPDATE settings SET detection_interval = $1 WHERE id = 1", [Math.round(detectionInterval)]);
     }
@@ -414,14 +453,14 @@ app.post(
            armed_audio  = COALESCE($2::boolean, armed_audio),
            armed_pepper = COALESCE($3::boolean, armed_pepper),
            armed_last   = COALESCE($4::boolean, armed_last)
-         WHERE id = 1`,
-        [flag(armed.lights), flag(armed.audio), flag(armed.pepper), flag(armed.last)]
+         WHERE id = $5`,
+        [flag(armed.lights), flag(armed.audio), flag(armed.pepper), flag(armed.last), devId]
       );
     }
-    const status = await deviceStatusPayload();
-    const settings = await settingsPayload();
-    if (armed && typeof armed === "object") broadcast("status", status);
-    broadcast("settings", settings);
+    const status = await deviceStatusPayload(devId);
+    const settings = await settingsPayload(devId);
+    if (armed && typeof armed === "object") broadcast("status", status, devId);
+    broadcast("settings", settings, devId);
     res.json({ settings, status });
   })
 );
@@ -473,6 +512,8 @@ app.post(
   wrap(async (req, res) => {
     const { type, duration } = req.body || {};
     if (!["lights", "audio", "pepper", "last"].includes(type)) return res.status(400).json({ error: "Invalid trigger type" });
+    const devId = (await userDeviceId(req.user, req.body && req.body.device)) || (req.user.role === "admin" ? 1 : 0);
+    if (!devId) return res.status(403).json({ error: "No device is assigned to your account" });
     const key = `${req.user.username}:${type}`;
     const last = lastFired.get(key) || 0;
     if (Date.now() - last < TRIGGER_COOLDOWN_MS) {
@@ -487,14 +528,14 @@ app.post(
     try {
       await db.tx(async (client) => {
         await client.query(
-          `INSERT INTO trigger_events (id, type, status, source, is_rat, is_last, detail, requested_by, confidence, created_at)
-           VALUES ($1,$2,'pending','manual',false,$3,'Manual test',$4,NULL,$5)`,
-          [eventId, type, type === "last", req.user.username, now]
+          `INSERT INTO trigger_events (id, type, status, source, is_rat, is_last, detail, requested_by, confidence, created_at, device_id)
+           VALUES ($1,$2,'pending','manual',false,$3,'Manual test',$4,NULL,$5,$6)`,
+          [eventId, type, type === "last", req.user.username, now, devId]
         );
         await client.query(
-          `INSERT INTO commands (id, type, duration, status, trigger_event_id, created_at)
-           VALUES ($1,$2,$3,'pending',$4,$5)`,
-          [cmdId, type, dur, eventId, now]
+          `INSERT INTO commands (id, type, duration, status, trigger_event_id, created_at, device_id)
+           VALUES ($1,$2,$3,'pending',$4,$5,$6)`,
+          [cmdId, type, dur, eventId, now, devId]
         );
       });
     } catch (err) {
@@ -502,7 +543,7 @@ app.post(
       throw err;
     }
 
-    broadcast("trigger_requested", { id: eventId, type, status: "pending", user: req.user.username, ts: now });
+    broadcast("trigger_requested", { id: eventId, type, status: "pending", user: req.user.username, ts: now }, devId);
     res.status(202).json({ id: eventId, status: "pending" });
   })
 );
@@ -512,21 +553,23 @@ app.get(
   "/api/logs",
   requireUser,
   wrap(async (req, res) => {
-    const limit = parseLimit(req.query.limit, 100, 500);
-    const since = toIso(req.query.since);
+        const since = toIso(req.query.since);
+    const devId = await userDeviceId(req.user, req.query.device);
 
     const [detRows, trgRows] = await Promise.all([
       db.many(
         `SELECT * FROM detections
           WHERE ($1::timestamptz IS NULL OR "timestamp" > $1::timestamptz)
+            AND ($3::int IS NULL OR device_id = $3::int)
           ORDER BY "timestamp" DESC LIMIT $2`,
-        [since, limit]
+        [since, limit, devId]
       ),
       db.many(
         `${TRIGGER_SELECT}
           WHERE ($1::timestamptz IS NULL OR t.created_at > $1::timestamptz)
+            AND ($3::int IS NULL OR t.device_id = $3::int)
           ORDER BY t.created_at DESC LIMIT $2`,
-        [since, limit]
+        [since, limit, devId]
       ),
     ]);
 
@@ -544,11 +587,13 @@ app.get(
   wrap(async (req, res) => {
     const limit = parseLimit(req.query.limit, 60, 200);
     const since = toIso(req.query.since);
+        const devId = await userDeviceId(req.user, req.query.device);
     const rows = await db.many(
       `SELECT * FROM detections
         WHERE ($1::timestamptz IS NULL OR "timestamp" > $1::timestamptz)
+          AND ($3::int IS NULL OR device_id = $3::int)
         ORDER BY "timestamp" DESC LIMIT $2`,
-      [since, limit]
+      [since, limit, devId]
     );
     res.json(
       rows.map((d) => {
@@ -576,7 +621,11 @@ app.get(
   requireUser,
   wrap(async (req, res) => {
     const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-    const rows = await db.many("SELECT type, created_at FROM trigger_events WHERE created_at > $1 AND status != 'fail'", [since]);
+    const devId = await userDeviceId(req.user, req.query.device);
+    const rows = await db.many(
+      "SELECT type, created_at FROM trigger_events WHERE created_at > $1 AND status != 'fail' AND ($2::int IS NULL OR device_id = $2::int)",
+      [since, devId]
+    );
     const buckets = Array.from({ length: 24 }, (_, i) => {
       const h = new Date();
       h.setMinutes(0, 0, 0);
@@ -672,7 +721,9 @@ app.post(
   requireUser,
   requireAdmin,
   wrap(async (req, res) => {
-    const id = await generateWeeklyReport();
+        const devs = await db.many("SELECT id FROM device ORDER BY id");
+    let id = null;
+    for (const d of devs) id = await generateWeeklyReport(d.id);
     res.status(201).json({ id });
   })
 );
@@ -712,8 +763,8 @@ app.post(
          armed_audio  = COALESCE($4::boolean, armed_audio),
          armed_pepper = COALESCE($5::boolean, armed_pepper),
          armed_last   = COALESCE($6::boolean, armed_last),
-         last_seen    = $7
-       WHERE id = 1`,
+            last_seen    = $7
+       WHERE id = $8`,
       [
         online !== false,
         ip ? String(ip) : null,
@@ -721,10 +772,11 @@ app.post(
         flag(armed?.audio),
         flag(armed?.pepper),
         flag(armed?.last),
-        toIso(last_seen) || new Date().toISOString(),
+            toIso(last_seen) || new Date().toISOString(),
+        req.deviceId,
       ]
     );
-    broadcast("status", await deviceStatusPayload());
+    broadcast("status", await deviceStatusPayload(req.deviceId), req.deviceId);
     res.json({ ok: true });
   })
 );
@@ -747,8 +799,8 @@ app.post(
 
 const INSERT_AUTO_TRIGGER = `
   INSERT INTO trigger_events
-    (id, type, status, source, is_rat, is_last, detail, requested_by, detection_id, confidence, fired_at, created_at)
-  VALUES ($1,$2,'ok','auto',false,$3,$4,'auto-detect',$5,$6,$7,$8)`;
+    (id, type, status, source, is_rat, is_last, detail, requested_by, detection_id, confidence, fired_at, created_at, device_id)
+  VALUES ($1,$2,'ok','auto',false,$3,$4,'auto-detect',$5,$6,$7,$8,$9)`;
 
 app.post(
   "/api/pi/detections",
@@ -768,20 +820,20 @@ app.post(
 
     await db.tx(async (client) => {
       await client.query(
-        `INSERT INTO detections (id, "timestamp", confidence, photo_path, actions_fired, escalated, created_at)
-         VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7)`,
-        [id, tsIso, conf, photoPath, JSON.stringify(actions), escalated, now]
+        `INSERT INTO detections (id, "timestamp", confidence, photo_path, actions_fired, escalated, created_at, device_id)
+         VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8)`,
+        [id, tsIso, conf, photoPath, JSON.stringify(actions), escalated, now, req.deviceId]
       );
       for (const type of actions) {
-        await client.query(INSERT_AUTO_TRIGGER, [uuid(), type, type === "last", "Auto-response: rat detected", id, conf, tsIso, now]);
+        await client.query(INSERT_AUTO_TRIGGER, [uuid(), type, type === "last", "Auto-response: rat detected", id, conf, tsIso, now, req.deviceId]);
       }
       if (escalated && !actions.includes("last")) {
-        await client.query(INSERT_AUTO_TRIGGER, [uuid(), "last", true, "Horn — escalating", id, conf, tsIso, now]);
+        await client.query(INSERT_AUTO_TRIGGER, [uuid(), "last", true, "Horn — escalating", id, conf, tsIso, now, req.deviceId]);
       }
     });
 
     const detRow = await db.one("SELECT * FROM detections WHERE id = $1", [id]);
-    broadcast("detection", detectionToLogEntry(detRow));
+    broadcast("detection", detectionToLogEntry(detRow), req.deviceId);
     res.status(201).json({ id });
   })
 );
@@ -791,10 +843,11 @@ app.post(
   requireDevice,
   wrap(async (req, res) => {
     const { type, status, fired_at, command_id } = req.body || {};
-    let row = command_id ? await db.one("SELECT * FROM commands WHERE id = $1", [String(command_id)]) : null;
+        let row = command_id ? await db.one("SELECT * FROM commands WHERE id = $1 AND device_id = $2", [String(command_id), req.deviceId]) : null;
     if (!row) {
-      row = await db.one("SELECT * FROM commands WHERE type = $1 AND status != 'done' ORDER BY created_at DESC LIMIT 1", [
+      row = await db.one("SELECT * FROM commands WHERE type = $1 AND status != 'done' AND device_id = $2 ORDER BY created_at DESC LIMIT 1", [
         type === undefined || type === null ? null : String(type),
+        req.deviceId,
       ]);
     }
     if (!row) return res.status(404).json({ error: "No matching pending command" });
@@ -813,7 +866,7 @@ app.post(
 
     if (row.trigger_event_id) {
       const t = await db.one(`${TRIGGER_SELECT} WHERE t.id = $1`, [row.trigger_event_id]);
-      if (t) broadcast("trigger_ack", triggerToLogEntry(t));
+      if (t) broadcast("trigger_ack", triggerToLogEntry(t), req.deviceId);
     }
     res.json({ ok: true });
   })
@@ -828,10 +881,11 @@ app.get(
     const rows = await db.many(
       `UPDATE commands SET status = 'delivered'
         WHERE id IN (
-          SELECT id FROM commands WHERE status = 'pending'
+          SELECT id FROM commands WHERE status = 'pending' AND device_id = $1
           ORDER BY created_at ASC LIMIT 10 FOR UPDATE SKIP LOCKED
         )
-        RETURNING id, type, duration, created_at`
+        RETURNING id, type, duration, created_at`,
+      [req.deviceId]
     );
     rows.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
     res.json(rows.map((c) => ({ id: c.id, type: c.type, duration: c.duration })));
@@ -863,11 +917,11 @@ function startBackgroundJobs() {
     checkingOffline = true;
     try {
       const cutoff = new Date(Date.now() - OFFLINE_AFTER_MS);
-      const { rowCount } = await db.query(
-        "UPDATE device SET online = false WHERE id = 1 AND online = true AND last_seen IS NOT NULL AND last_seen < $1",
+        const { rows } = await db.query(
+        "UPDATE device SET online = false WHERE online = true AND last_seen IS NOT NULL AND last_seen < $1 RETURNING id",
         [cutoff]
       );
-      if (rowCount) broadcast("status", await deviceStatusPayload());
+      for (const r of rows) broadcast("status", await deviceStatusPayload(r.id), r.id);
     } catch (err) {
       console.error("[offline-check]", err.message);
     } finally {
@@ -884,7 +938,8 @@ function startBackgroundJobs() {
     if (lastAutoGenDate === today) return;
     lastAutoGenDate = today; // claim the day first so overlapping ticks cannot create two reports
     try {
-      await generateWeeklyReport();
+      const devs = await db.many("SELECT id FROM device ORDER BY id");
+      for (const d of devs) await generateWeeklyReport(d.id);
     } catch (err) {
       lastAutoGenDate = null; // try again on the next tick
       console.error("[weekly-report]", err.message);
