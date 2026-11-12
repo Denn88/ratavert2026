@@ -313,11 +313,37 @@ const changePassword = wrap(async (req, res) => {
 app.post("/api/auth/change-password", requireUser, changePassword);
 app.post("/api/me/password", requireUser, changePassword);
 
+// ── Opaque device tags ───────────────────────────────────────────────────────
+// A device remembers its previous owner only as a keyed hash, never as a readable
+// username. The key is the server secret plus a random salt kept in app_meta.
+let _tagKey = null;
+async function tagKey() {
+  if (_tagKey) return _tagKey;
+  let row = await db.one("SELECT value FROM app_meta WHERE key = 'cfg_7'");
+  if (!row) {
+    await db.query("INSERT INTO app_meta (key, value) VALUES ('cfg_7', $1) ON CONFLICT (key) DO NOTHING", [
+      require("crypto").randomBytes(16).toString("hex"),
+    ]);
+    row = await db.one("SELECT value FROM app_meta WHERE key = 'cfg_7'");
+  }
+  _tagKey = JWT_SECRET + row.value;
+  return _tagKey;
+}
+async function ownerTag(u) {
+  return "t_" + require("crypto").createHmac("sha256", await tagKey()).update(String(u)).digest("hex").slice(0, 30);
+}
+// One-time upgrade of any readable value left in device.reserved_owner.
+async function obfuscateReservedOwners() {
+  const rows = await db.many("SELECT id, reserved_owner FROM device WHERE reserved_owner IS NOT NULL AND left(reserved_owner, 2) <> 't_'");
+  for (const r of rows) await db.query("UPDATE device SET reserved_owner = $1 WHERE id = $2", [await ownerTag(r.reserved_owner), r.id]);
+}
+
 // Removes every record that belongs to an account: its manual captures, trigger
 // events, commands, reports, and everything on the device(s) it owns. Returns the
 // photo file names so the caller can delete them from storage after the commit.
 async function purgeAccountData(client, u) {
-  const devs = (await client.query("SELECT id FROM device WHERE owner = $1 OR reserved_owner = $1", [u])).rows.map((r) => r.id);
+  const tag = await ownerTag(u);
+  const devs = (await client.query("SELECT id FROM device WHERE owner = $1 OR reserved_owner = $2", [u, tag])).rows.map((r) => r.id);
   const dets = (
     await client.query("SELECT id, photo_path FROM detections WHERE captured_by = $1 OR device_id = ANY($2::int[])", [u, devs])
   ).rows;
@@ -333,7 +359,7 @@ async function purgeAccountData(client, u) {
   await client.query("DELETE FROM detections WHERE id = ANY($1::text[])", [detIds]);
   await client.query("DELETE FROM weekly_reports WHERE device_owner = $1 OR device_id = ANY($2::int[])", [u, devs]);
   // Remember who this device belongs to, so a new account with the same name is linked automatically.
-  await client.query("UPDATE device SET reserved_owner = $1, owner = NULL WHERE owner = $1", [u]);
+  await client.query("UPDATE device SET reserved_owner = $2, owner = NULL WHERE owner = $1", [u, tag]);
   return dets.map((d) => d.photo_path).filter(Boolean);
 }
 
@@ -403,7 +429,7 @@ app.post(
     if (!inserted) return res.status(409).json({ error: "That username already exists" });
     // Auto-link the Pi that was reserved for this username (regular users only).
     if (r === "user") {
-      await db.query("UPDATE device SET owner = $1 WHERE reserved_owner = $1 AND owner IS NULL", [u]);
+      await db.query("UPDATE device SET owner = $1 WHERE reserved_owner = $2 AND owner IS NULL", [u, await ownerTag(u)]);
     }
     broadcast("accounts_changed", {});
     res.status(201).json({ username: u, role: r, active: true });
@@ -1029,6 +1055,7 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 
 async function main() {
   await db.init();
+  await obfuscateReservedOwners().catch((e) => console.warn("[tags] could not upgrade device tags:", e.message));
   try {
     const { error } = await supabase.storage.getBucket(PHOTO_BUCKET);
     if (error) {
