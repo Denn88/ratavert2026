@@ -428,6 +428,24 @@ const css = `
   .gallery-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; }
   .gallery-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; transition:all .2s; }
   .gallery-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+  .gallery-card { cursor:pointer; }
+  .pm-back { position:fixed; inset:0; z-index:300; background:rgba(0,0,0,.72); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .pm-box { background:var(--surface); border:1px solid var(--border); border-radius:14px; width:min(980px,100%); max-height:92vh; overflow:auto; padding:18px; display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:18px; }
+  .pm-left { display:flex; flex-direction:column; gap:14px; min-width:0; }
+  .pm-img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:10px; border:1px solid var(--border); background:var(--bg); display:block; }
+  .pm-more { border:1px solid var(--border); border-radius:14px; padding:12px 14px; background:rgba(16,185,129,.04); }
+  .pm-more-t { font-family:var(--font-mono); font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin-bottom:8px; }
+  .pm-kv { display:flex; justify-content:space-between; gap:12px; font-size:13px; padding:3px 0; }
+  .pm-kv span:first-child { color:var(--dim); }
+  .pm-kv span:last-child { text-align:right; word-break:break-word; }
+  .pm-right { display:flex; flex-direction:column; gap:10px; min-width:0; }
+  .pm-h { font-family:var(--font-mono); font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); }
+  .pm-row { display:grid; grid-template-columns:auto auto auto 1fr; gap:6px 12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); font-size:12px; }
+  .pm-row .pm-d { grid-column:1 / -1; color:var(--dim); }
+  .pm-foot { margin-top:auto; display:flex; justify-content:flex-end; padding-top:8px; }
+  .pm-btn { background:transparent; border:1px solid var(--accent); color:var(--accent); border-radius:6px; padding:8px 16px; font-family:var(--font-mono); font-size:12px; cursor:pointer; }
+  .pm-btn:hover { background:rgba(16,185,129,.1); }
+  @media (max-width:760px) { .pm-box { grid-template-columns:1fr; } }
   .gallery-thumb { width:100%; aspect-ratio:4/3; display:block; background:var(--panel); object-fit:cover; }
   .gallery-meta { padding:10px 12px; }
   .gallery-time { font-family:var(--font-mono); font-size:11px; color:var(--dim); }
@@ -1323,8 +1341,54 @@ function ActivityLogTable({ logs, onViewPhoto }) {
   );
 }
 
+// ── Photo detail pop-up ──────────────────────────────────────────────────────
+function PhotoModal({ photo, logs, deviceLabel, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const related = logs.filter((l) => l.photoId && l.photoId === photo.url).sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  const rows = related.length ? related : [{
+    id: "self", dateStr: photo.dateStr, tsStr: photo.tsStr, isRat: photo.isRat, type: photo.type,
+    user: photo.isRat ? "auto-detect" : (photo.capturedBy || "unknown"), status: "ok", detail: photo.isRat ? "Rat confirmed" : "Manual test capture",
+  }];
+  const fired = (photo.actionsFired || []).map((k) => TYPE_META[k]?.label || k);
+  return (
+    <div className="pm-back" onClick={onClose}>
+      <div className="pm-box" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div className="pm-left">
+          {photo.url ? <img className="pm-img" src={api.photoUrl(photo.url)} alt="Captured detection" /> : <div className="pm-img" />}
+          <div className="pm-more">
+            <div className="pm-more-t">More info</div>
+            <div className="pm-kv"><span>Captured</span><span>{photo.ts ? new Date(photo.ts).toLocaleString() : `${photo.dateStr} ${photo.tsStr}`}</span></div>
+            <div className="pm-kv"><span>Confidence</span><span>{photo.confidence != null ? Math.round(photo.confidence * 100) + "%" : "—"}</span></div>
+            <div className="pm-kv"><span>Deterrent fired</span><span>{fired.length ? fired.join(", ") : "None"}</span></div>
+            <div className="pm-kv"><span>Escalated to horn</span><span>{photo.escalated ? "Yes" : "No"}</span></div>
+            <div className="pm-kv"><span>Source</span><span>{photo.isRat ? "Automatic detection" : `Manual capture${photo.capturedBy ? ` by ${photo.capturedBy}` : ""}`}</span></div>
+            {deviceLabel && <div className="pm-kv"><span>Device</span><span>{deviceLabel}</span></div>}
+          </div>
+        </div>
+        <div className="pm-right">
+          <div className="pm-h">Activity for this capture</div>
+          {rows.map((l) => (
+            <div className="pm-row" key={l.id}>
+              <span className="ts">{l.dateStr} {l.tsStr}</span>
+              {l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label || l.type}</span>}
+              {statusBadge(l.status)}
+              <span style={{ color: "var(--dim)" }}>{l.user}</span>
+              <span className="pm-d">{l.detail}</span>
+            </div>
+          ))}
+          <div className="pm-foot"><button className="pm-btn" onClick={onClose}>← Back</button></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Photo gallery grid ───────────────────────────────────────────────────────
-function PhotoGallery({ photos }) {
+function PhotoGallery({ photos, onOpen }) {
   return (
     <>
       <div className="gallery-toolbar">
@@ -1340,7 +1404,7 @@ function PhotoGallery({ photos }) {
               ? `Rat Detected${p.confidence != null ? ` · ${Math.round(p.confidence * 100)}%` : ""}`
               : `Test Capture${p.capturedBy ? ` · ${p.capturedBy}` : ""}`;
             return (
-              <div className="gallery-card" key={p.id} id={`photo-${p.id}`}>
+              <div className="gallery-card" key={p.id} id={`photo-${p.id}`} role="button" tabIndex={0} onClick={() => onOpen && onOpen(p)} onKeyDown={(e) => { if (e.key === "Enter") onOpen && onOpen(p); }}>
                 {p.url ? <img className="gallery-thumb" src={api.photoUrl(p.url)} alt="Captured detection" /> : <div className="gallery-thumb" />}
                 <div className="gallery-meta">
                   <div className="gallery-time">{p.dateStr} {p.tsStr}</div>
@@ -1356,17 +1420,27 @@ function PhotoGallery({ photos }) {
 }
 
 // ── Activity page — Log / Photos tabs ───────────────────────────────────────
-function ActivityPage({ logs, photos }) {
+function ActivityPage({ logs, photos, deviceLabel }) {
   const [tab, setTab] = useState("log");
+  const [viewUrl, setViewUrl] = useState(null);
+  let viewPhoto = null;
+  if (viewUrl) {
+    const entry = logs.find((l) => l.photoId === viewUrl && l.isRat) || logs.find((l) => l.photoId === viewUrl);
+    viewPhoto = photos.find((p) => p.url === viewUrl) || {
+      id: viewUrl, url: viewUrl, ts: entry ? entry.ts : null, dateStr: entry ? entry.dateStr : "", tsStr: entry ? entry.tsStr : "",
+      confidence: entry ? entry.confidence : null, isRat: entry ? !!entry.isRat : true, actionsFired: [], escalated: false,
+    };
+  }
   return (
     <>
+      {viewPhoto && <PhotoModal photo={viewPhoto} logs={logs} deviceLabel={deviceLabel} onClose={() => setViewUrl(null)} />}
       <div className="tabbar">
         <button className={`tabbtn ${tab === "log" ? "active" : ""}`} onClick={() => setTab("log")}>Log</button>
         <button className={`tabbtn ${tab === "photos" ? "active" : ""}`} onClick={() => setTab("photos")}>Photos ({photos.length})</button>
       </div>
       {tab === "log"
-        ? <ActivityLogTable logs={logs} onViewPhoto={() => setTab("photos")} />
-        : <PhotoGallery photos={photos} />}
+        ? <ActivityLogTable logs={logs} onViewPhoto={(url) => setViewUrl(url)} />
+        : <PhotoGallery photos={photos} onOpen={(p) => setViewUrl(p.url)} />}
     </>
   );
 }
@@ -1839,6 +1913,9 @@ function NotificationBell({ logs, deviceLabel }) {
       {open && (
         <div className="notif-panel">
           <div className="notif-hdr">Detection alerts</div>
+          {typeof Notification !== "undefined" && Notification.permission === "default" && (
+            <button className="pm-btn" style={{ margin: "8px 12px" }} onClick={() => Notification.requestPermission().then(() => setOpen(false))}>Enable desktop alerts</button>
+          )}
           {alerts.length === 0 && <div className="notif-empty">No detection alerts yet.</div>}
           {alerts.map((l) => (
             <div className="notif-item" key={l.id}>
@@ -1878,6 +1955,9 @@ export default function App() {
   const [rpiIp, setRpiIp] = useState("");
   const [rpiOwner, setRpiOwner] = useState(null);
   const [rpiLinked, setRpiLinked] = useState(true);
+  const [rpiName, setRpiName] = useState("");
+  const rpiNameRef = useRef("");
+  rpiNameRef.current = rpiName;
   const scanning = detecting && rpiConnected; // detection only counts while the Pi is online
   const [accounts, setAccounts] = useState([]);
   const [accountsLoading, setAccountsLoading] = useState(false);
@@ -1898,7 +1978,7 @@ export default function App() {
       const [status, settings, logsRes, detRes, chartRes] = await Promise.all([
         api.getStatus(), api.getSettings(), api.getLogs({ limit: 150 }), api.getDetections({ limit: 60 }), api.getHourlyAnalytics(),
       ]);
-      setRpi(status.online); setRpiIp(status.ip || ""); setRpiOwner(status.owner || null); setRpiLinked(status.linked !== false);
+      setRpi(status.online); setRpiIp(status.ip || ""); setRpiOwner(status.owner || null); setRpiLinked(status.linked !== false); setRpiName(status.name || "");
       setEnabledState(status.armed);
       setDetectingState(settings.detecting); setDetIntState(settings.detectionInterval);
       setLogs(logsRes);
@@ -1921,6 +2001,14 @@ export default function App() {
         setLogs((prev) => [evt.payload, ...prev].slice(0, 300));
         setPhotos((prev) => [{ id: evt.payload.id.replace("det-", ""), ts: evt.payload.ts, tsStr: evt.payload.tsStr, dateStr: evt.payload.dateStr, confidence: evt.payload.confidence, url: evt.payload.photoId, escalated: evt.payload.isLast }, ...prev].slice(0, 100));
         setRatCount((c) => c + 1);
+        try {
+          if (typeof Notification !== "undefined" && Notification.permission === "granted" && !evt.payload.type) {
+            new Notification("⚠ Rat detected", {
+              body: `${rpiNameRef.current || "RatAvert Pi"} · confidence ${evt.payload.confidence != null ? Math.round(evt.payload.confidence * 100) + "%" : "—"} · ${evt.payload.dateStr} ${evt.payload.tsStr}`,
+              tag: evt.payload.id,
+            });
+          }
+        } catch { /* notifications are optional */ }
         setRatAlert(true); setSeqStep(0); setLastNow(false);
         clearTimeout(ratAlertTimer.current);
         ratAlertTimer.current = setTimeout(() => setRatAlert(false), 60000);
@@ -1942,7 +2030,7 @@ export default function App() {
           setFiringKey(p.type);
         }
       } else if (evt.type === "status") {
-        setRpi(evt.payload.online); setRpiIp(evt.payload.ip || ""); setRpiOwner(evt.payload.owner || null); setEnabledState(evt.payload.armed);
+        setRpi(evt.payload.online); setRpiIp(evt.payload.ip || ""); setRpiOwner(evt.payload.owner || null); setRpiName(evt.payload.name || ""); setEnabledState(evt.payload.armed);
       } else if (evt.type === "settings") {
         setDetectingState(evt.payload.detecting); setDetIntState(evt.payload.detectionInterval);
       } else if (evt.type === "accounts_changed" && page === "admin") {
@@ -2067,7 +2155,7 @@ export default function App() {
           {!isAdmin && <span className={`nb ${rpiConnected ? "nb-rpi" : "nb-off"}`}>{rpiConnected ? "Pi Online" : "Pi Offline"}</span>}
           {isAdmin
             ? <span className="nb nb-admin">Admin</span>
-            : <NotificationBell logs={logs} deviceLabel={`RatAvert Pi${rpiIp ? ` (${rpiIp})` : ""}`} />}
+            : <NotificationBell logs={logs} deviceLabel={rpiName || "RatAvert Pi"} />}
           <div className="nav-user">{currentUser}</div>
           <button className="nav-out" onClick={signOut}>Sign Out</button>
         </div>
@@ -2129,7 +2217,7 @@ export default function App() {
               ? <DeviceReportsPage />
               : <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />)}
             {page === "triggers" && <Triggers logs={logs} enabled={enabled} setEnabled={setEnabledOne} onFire={onFire} firingKey={firingKey} rpiConnected={rpiConnected} notice={triggerNotice} />}
-            {page === "activity" && (isAdmin ? <DeviceReportsPage /> : <ActivityPage logs={logs} photos={photos} />)}
+            {page === "activity" && (isAdmin ? <DeviceReportsPage /> : <ActivityPage logs={logs} photos={photos} deviceLabel={rpiName || "RatAvert Pi"} />)}
             {page === "analytics" && <AnalyticsPage logs={logs} chartData={chart} counts={counts} ratCount={ratCount} />}
             {page === "settings" && (
               <Settings
