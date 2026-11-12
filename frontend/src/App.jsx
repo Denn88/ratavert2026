@@ -1978,7 +1978,7 @@ export default function App() {
       const [status, settings, logsRes, detRes, chartRes] = await Promise.all([
         api.getStatus(), api.getSettings(), api.getLogs({ limit: 150 }), api.getDetections({ limit: 60 }), api.getHourlyAnalytics(),
       ]);
-      setRpi(status.online); setRpiIp(status.ip || ""); setRpiOwner(status.owner || null); setRpiLinked(status.linked !== false); setRpiName(status.name || "");
+      setRpi(status.online); setRpiIp(status.ip || ""); setRpiOwner(status.owner || null); setRpiLinked(status.linked !== false); setRpiName(status.owner || "");
       setEnabledState(status.armed);
       setDetectingState(settings.detecting); setDetIntState(settings.detectionInterval);
       setLogs(logsRes);
@@ -2030,7 +2030,7 @@ export default function App() {
           setFiringKey(p.type);
         }
       } else if (evt.type === "status") {
-        setRpi(evt.payload.online); setRpiIp(evt.payload.ip || ""); setRpiOwner(evt.payload.owner || null); setRpiName(evt.payload.name || ""); setEnabledState(evt.payload.armed);
+        setRpi(evt.payload.online); setRpiIp(evt.payload.ip || ""); setRpiOwner(evt.payload.owner || null); setRpiName(evt.payload.owner || ""); setEnabledState(evt.payload.armed);
       } else if (evt.type === "settings") {
         setDetectingState(evt.payload.detecting); setDetIntState(evt.payload.detectionInterval);
       } else if (evt.type === "accounts_changed" && page === "admin") {
@@ -2155,7 +2155,7 @@ export default function App() {
           {!isAdmin && <span className={`nb ${rpiConnected ? "nb-rpi" : "nb-off"}`}>{rpiConnected ? "Pi Online" : "Pi Offline"}</span>}
           {isAdmin
             ? <span className="nb nb-admin">Admin</span>
-            : <NotificationBell logs={logs} deviceLabel={rpiName || "RatAvert Pi"} />}
+            : <NotificationBell logs={logs} deviceLabel={rpiName || currentUser || "RatAvert Pi"} />}
           <div className="nav-user">{currentUser}</div>
           <button className="nav-out" onClick={signOut}>Sign Out</button>
         </div>
@@ -2217,7 +2217,7 @@ export default function App() {
               ? <DeviceReportsPage />
               : <Dashboard logs={logs} chartData={chart} enabled={enabled} counts={counts} ratCount={ratCount} detecting={detecting} rpiConnected={rpiConnected} photoCount={photos.length} />)}
             {page === "triggers" && <Triggers logs={logs} enabled={enabled} setEnabled={setEnabledOne} onFire={onFire} firingKey={firingKey} rpiConnected={rpiConnected} notice={triggerNotice} />}
-            {page === "activity" && (isAdmin ? <DeviceReportsPage /> : <ActivityPage logs={logs} photos={photos} deviceLabel={rpiName || "RatAvert Pi"} />)}
+            {page === "activity" && (isAdmin ? <DeviceReportsPage /> : <ActivityPage logs={logs} photos={photos} deviceLabel={rpiName || currentUser || "RatAvert Pi"} />)}
             {page === "analytics" && <AnalyticsPage logs={logs} chartData={chart} counts={counts} ratCount={ratCount} />}
             {page === "settings" && (
               <Settings
