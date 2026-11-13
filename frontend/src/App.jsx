@@ -617,7 +617,21 @@ const css = `
   .dr-btn:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); background:rgba(16,185,129,.08); }
   .dr-btn:disabled { opacity:.5; cursor:not-allowed; }
 
+  .nav-burger { display:none; width:36px; height:36px; margin-right:10px; border-radius:6px; flex-shrink:0;
+    background:var(--panel); border:1px solid var(--border); color:var(--accent); font-size:18px; cursor:pointer; }
+  .notif-ico { display:none; }
+  .sb-backdrop { display:none; }
   @media (max-width:900px) {
+    .app { height:100vh; height:100dvh; }
+    .nav-burger { display:inline-flex; align-items:center; justify-content:center; }
+    .sidebar { position:fixed; top:56px; bottom:0; left:0; z-index:150; width:260px; min-width:260px;
+      transform:translateX(-102%); transition:transform .22s ease; box-shadow:0 0 40px rgba(0,0,0,.45); }
+    .sidebar.open { transform:translateX(0); }
+    .sb-backdrop { display:block; position:fixed; inset:56px 0 0 0; z-index:140; background:rgba(0,0,0,.55); }
+    .content { padding:14px 12px; }
+    .nav-user { display:none; }
+    .notif-panel { position:fixed; top:62px; right:8px; left:8px; width:auto; max-height:70vh; }
+    .toast { left:12px; right:12px; bottom:12px; max-width:none; }
     .status-bar { grid-template-columns:repeat(3,1fr); }
     .metrics    { grid-template-columns:repeat(2,1fr); }
     .tgrid      { grid-template-columns:repeat(2,1fr); }
@@ -628,7 +642,46 @@ const css = `
     .an-grid    { grid-template-columns:repeat(2,1fr); }
     .an-row     { grid-template-columns:1fr; }
   }
+  @media (max-width:420px) {
+    .nav-brand-t { display:none; }
+    .tt-lbl { display:none; }
+    .nav-burger { margin-right:6px; }
+    .nb, .nav-out { padding:4px 7px; }
+    .notif-lbl { display:none; }
+    .notif-ico { display:inline; }
+  }
+  .lb-short { display:none; }
+  @media (max-width:380px) {
+    .land-nav { padding:10px 10px; }
+    .land-brand { font-size:12px; letter-spacing:1px; gap:6px; }
+    .land-btns { gap:4px; }
+    .land-nav .land-btns .lbtn { padding:7px 8px; font-size:12px; }
+    .land-nav .land-btns .theme-toggle { font-size:11px; padding:5px 6px; }
+    .land-nav .land-brand { font-size:12px; letter-spacing:1px; }
+  }
   @media (max-width:600px) {
+    .land-nav { padding:12px 14px; gap:8px; }
+    .land-brand { letter-spacing:2px; font-size:14px; }
+    .land-btns { gap:6px; }
+    .land-btns .lbtn { padding:8px 12px; font-size:13px; white-space:nowrap; }
+    .lb-long { display:none; } .lb-short { display:inline; }
+    .land-btns .theme-toggle { padding:6px 8px; }
+    .acct-add-form { flex-direction:column; align-items:stretch; }
+    .acct-add-form .af-field, .af-in, .af-sel, .af-btn { width:100%; box-sizing:border-box; }
+    .acct-row { padding:14px; }
+    .acct-actions { width:100%; }
+    .dr-tab { padding:8px 14px; }
+    .ltable thead { display:none; }
+    .ltable, .ltable tbody { display:block; width:100%; }
+    .ltable tr { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; padding:10px 2px; border-bottom:1px solid var(--border); }
+    .ltable tr:last-child { border-bottom:none; }
+    .ltable td { border:none; padding:0; }
+    .ltable td.td-detail { flex-basis:100%; }
+    .navbar { padding:0 10px; }
+    .nav-brand { margin-right:6px; letter-spacing:2px; font-size:13px; }
+    .nav-time { display:none; }
+    .nav-right { gap:4px; }
+    .theme-toggle { padding:4px 8px; font-size:11px; }
     .metrics    { grid-template-columns:1fr; }
     .tgrid      { grid-template-columns:1fr; }
     .status-bar { grid-template-columns:repeat(2,1fr); }
@@ -718,7 +771,7 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
         <div className="land-btns">
           <button className="theme-toggle" onClick={onToggleTheme}>{theme === "dark" ? "☀ Light" : "☾ Dark"}</button>
           <button className="lbtn lbtn-ghost" onClick={onLogin}>Sign In</button>
-          <button className="lbtn lbtn-solid" onClick={onLogin}>Launch Dashboard →</button>
+          <button className="lbtn lbtn-solid" onClick={onLogin}><span className="lb-long">Launch Dashboard</span><span className="lb-short">Launch</span> →</button>
         </div>
       </nav>
       <section className="land-hero">
@@ -1005,7 +1058,7 @@ function DeviceReportsPage() {
                   <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label || (l.type === "vibrate" ? "Vibrate" : l.type)}</span>}</td>
                   <td>{statusBadge(l.status)}</td>
                   <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.confidence != null ? Math.round(l.confidence * 100) + "%" : "—"}</td>
-                  <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
+                  <td className="td-detail" style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
                 </tr>
               ))}
             </tbody>
@@ -1224,7 +1277,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
                 <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label || (l.type === "vibrate" ? "Vibrate" : l.type)}</span>}</td>
                 <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.user}</td>
                 <td>{statusBadge(l.status)}</td>
-                <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
+                <td className="td-detail" style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
               </tr>
             ))}
           </tbody>
@@ -1329,7 +1382,7 @@ function ActivityLogTable({ logs, onViewPhoto }) {
                 <td>{l.isRat ? <span className="tbadge tbd">RAT</span> : l.isLast ? <span className="tbadge tblr">HORN</span> : <span className={`tbadge ${TYPE_META[l.type]?.cls}`}>{TYPE_META[l.type]?.label || (l.type === "vibrate" ? "Vibrate" : l.type)}</span>}</td>
                 <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.user}</td>
                 <td>{statusBadge(l.status)}</td>
-                <td style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
+                <td className="td-detail" style={{ fontSize: "12px", color: "var(--dim)" }}>{l.detail}</td>
                 <td>{l.photoId ? <button className="photo-link-btn" onClick={() => onViewPhoto && onViewPhoto(l.photoId)}>View</button> : <span style={{ color: "var(--muted)", fontSize: "11px" }}>—</span>}</td>
               </tr>
             ))}
@@ -1901,7 +1954,7 @@ function NotificationBell({ logs, deviceLabel, onOpen }) {
   return (
     <div className="notif-wrap" ref={wrapRef}>
       <button className="nb nb-user notif-btn" onClick={toggle}>
-        Notifications{unread > 0 && <span className="notif-dot">{unread}</span>}
+        <span className="notif-ico">🔔</span><span className="notif-lbl">Notifications</span>{unread > 0 && <span className="notif-dot">{unread}</span>}
       </button>
       {open && (
         <div className="notif-panel">
@@ -1951,6 +2004,8 @@ export default function App() {
   const [rpiName, setRpiName] = useState("");
   const [notifView, setNotifView] = useState(null); // photo opened from a notification
   const [confirmOut, setConfirmOut] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false); // mobile side menu
+  useEffect(() => { setMenuOpen(false); }, [page]);
   const rpiNameRef = useRef("");
   rpiNameRef.current = rpiName;
   const scanning = detecting && rpiConnected; // detection only counts while the Pi is online
@@ -2143,9 +2198,10 @@ export default function App() {
   return (
     <div className="app">
       <nav className="navbar">
-        <div className="nav-brand"><div className="brand-dot" />RATAVERT</div>
+        <button className="nav-burger" aria-label="Menu" onClick={() => setMenuOpen((o) => !o)}>{menuOpen ? "✕" : "☰"}</button>
+        <div className="nav-brand"><div className="brand-dot" /><span className="nav-brand-t">RATAVERT</span></div>
         <div className="nav-right" style={{ marginLeft: "auto" }}>
-          <button className="theme-toggle" onClick={toggleTheme}>{theme === "dark" ? "☀ Light" : "☾ Dark"}</button>
+          <button className="theme-toggle" onClick={toggleTheme}>{theme === "dark" ? "☀" : "☾"}<span className="tt-lbl"> {theme === "dark" ? "Light" : "Dark"}</span></button>
           <span className="nav-time">{fmtT(clock)}</span>
           {!isAdmin && <span className={`nb ${rpiConnected ? "nb-rpi" : "nb-off"}`}>{rpiConnected ? "Pi Online" : "Pi Offline"}</span>}
           {isAdmin
@@ -2169,8 +2225,9 @@ export default function App() {
         </div>
       )}
 
+      {menuOpen && <div className="sb-backdrop" onClick={() => setMenuOpen(false)} />}
       <div className="body">
-        <aside className="sidebar">
+        <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
             {isAdmin && (
              <div className="admin-zone">
               <div className="sb-label admin-lbl">Admin</div>
