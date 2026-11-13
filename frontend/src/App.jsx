@@ -1837,9 +1837,10 @@ function ChangePasswordForm() {
 }
 
 // ── Settings Page — Detection, Trigger Config, Account (one scrolling page) ──
-function Settings({ enabled, setEnabled, detecting, setDetecting }) {
+function Settings({ enabled, setEnabled, detecting, setDetecting, isAdmin }) {
   return (
     <div className="sg-col">
+      {!isAdmin && (
       <div className="scard">
         <div className="sc-title">Detection Settings</div>
         <div className="srow">
@@ -1851,6 +1852,7 @@ function Settings({ enabled, setEnabled, detecting, setDetecting }) {
         </div>
         <div className="srow"><div><div className="sn">Deterrence</div><div className="sd">Lights - Ultrasonic - Diffuser - Horn - Vibrate</div></div></div>
       </div>
+      )}
 
       <ChangePasswordForm />
     </div>
