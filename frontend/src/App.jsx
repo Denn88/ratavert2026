@@ -91,7 +91,7 @@ const css = `
   .hd-stat { background:var(--panel); border-radius:8px; padding:10px; border:1px solid var(--border); }
   .hd-sval { font-family:var(--font-mono); font-size:19px; font-weight:700; }
   .hd-slbl { font-size:10px; color:var(--dim); margin-top:3px; }
-  .hd-seq  { display:flex; gap:6px; justify-content:center; }
+  .hd-seq  { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
   .hd-si   { padding:5px 12px; border-radius:5px; font-size:11px; font-family:var(--font-mono); border:1px solid var(--border); color:var(--dim); }
   .hd-si.a { background:rgba(16,185,129,.15); color:var(--accent); border-color:var(--accent); }
   .hd-si.f { background:rgba(248,113,113,.15); color:var(--red); border-color:var(--red); animation:flash .5s infinite; }
@@ -761,8 +761,8 @@ function PasswordField({ value, onChange, placeholder, onKeyDown, className = "l
 function LandingPage({ onLogin, theme, onToggleTheme }) {
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = setInterval(() => setTick((v) => v + 1), 2000); return () => clearInterval(t); }, []);
-  const seq = ["LIGHTS", "ULTRASONIC", "DIFFUSER", "HORN"];
-  const ai = [2, 0, 3, 1, 0, 2, 1, 3][tick % 8];
+  const seq = ["LIGHTS", "ULTRASONIC", "DIFFUSER", "HORN", "VIBRATE"];
+  const ai = [2, 0, 4, 1, 3, 0, 2, 4, 1, 3][tick % 10];
   return (
     <div className="landing">
       <div className="land-bg" /><div className="grid-ov" /><div className="scan-bar" />
@@ -777,7 +777,7 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
       <section className="land-hero">
         <div className="eyebrow"><span className="pdot" />IoT · YOLOv8 · Raspberry Pi</div>
         <h1 className="hero-title">Smart Rat<br /><span>Deterrence</span><br />System</h1>
-        <p className="hero-sub">Real-time detection + multi-sensory response. Lights, ultrasonic sound, a peppermint diffuser, and a horn — with every detection captured on camera by your own Raspberry Pi.</p>
+        <p className="hero-sub">Real-time detection + multi-sensory response. Lights, ultrasonic sound, a peppermint diffuser, a horn, and a vibration motor — with every detection captured on camera by your own Raspberry Pi.</p>
         <div className="hero-cta">
           <button className="cta-p" onClick={onLogin}>Open Dashboard</button>
         </div>
@@ -803,7 +803,7 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
       <section className="land-feats">
         {[
           { title: "YOLOv8 Detection", desc: "Computer vision model trained on rat images, running real-time inference on Raspberry Pi edge hardware." },
-          { title: "Multi-Sensory Response", desc: "Lights, ultrasonic sound, a peppermint diffuser, and a horn deter rats without chemicals, one at a time." },
+          { title: "Multi-Sensory Response", desc: "Lights, ultrasonic sound, a peppermint diffuser, a horn, and vibration deter rats without chemicals, one at a time." },
           { title: "Randomized Response", desc: "Each detection triggers a different deterrent from the last one, so rats cannot predict or adapt to the pattern." },
           { title: "Photo Capture", desc: "Every detection saves a timestamped photo from the Pi camera, viewable anytime in Activity → Photos." },
           { title: "Guided Setup", desc: "Connect your Raspberry Pi in three simple steps from Settings — no manual code editing required." },
