@@ -1840,6 +1840,18 @@ function ChangePasswordForm() {
 function Settings({ enabled, setEnabled, detecting, setDetecting }) {
   return (
     <div className="sg-col">
+      <div className="scard">
+        <div className="sc-title">Detection Settings</div>
+        <div className="srow">
+          <div><div className="sn">Detection Status</div><div className="sd">Turn automatic rat detection on or off</div></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: detecting ? "var(--red)" : "var(--dim)" }}>{detecting ? "ON" : "OFF"}</span>
+            <div className={`tog ${detecting ? "on" : ""} red`} onClick={() => setDetecting(!detecting)} style={{ cursor: "pointer" }} />
+          </div>
+        </div>
+        <div className="srow"><div><div className="sn">Deterrence</div><div className="sd">Lights - Ultrasonic - Diffuser - Horn - Vibrate</div></div></div>
+      </div>
+
       <ChangePasswordForm />
     </div>
   );
