@@ -1547,7 +1547,7 @@ function AccountsPage({ accounts, loading, currentUser, onCreate, onSetRole, onT
               <>
                 <div className="modal-title">Delete account?</div>
                 <div className="modal-text">
-                  You are about to permanently delete <b>{delTarget}</b>. This cannot be undone. Their device will be unassigned, but the detection history is kept.
+                  You are about to permanently delete <b>{delTarget}</b>. This cannot be undone. Their device will be unassigned, and all of their data and photo captures will be deleted.
                 </div>
                 <div className="modal-actions">
                   <button className="deact-btn" onClick={closeDelete}>Cancel</button>
@@ -1950,6 +1950,7 @@ export default function App() {
   const [rpiLinked, setRpiLinked] = useState(true);
   const [rpiName, setRpiName] = useState("");
   const [notifView, setNotifView] = useState(null); // photo opened from a notification
+  const [confirmOut, setConfirmOut] = useState(false);
   const rpiNameRef = useRef("");
   rpiNameRef.current = rpiName;
   const scanning = detecting && rpiConnected; // detection only counts while the Pi is online
@@ -2151,9 +2152,22 @@ export default function App() {
             ? <span className="nb nb-admin">Admin</span>
             : <NotificationBell logs={logs} deviceLabel={rpiName || currentUser || "RatAvert Pi"} onOpen={(url) => { setNotifView(url); setPage("activity"); }} />}
           <div className="nav-user">{currentUser}</div>
-          <button className="nav-out" onClick={signOut}>Sign Out</button>
+          <button className="nav-out" onClick={() => setConfirmOut(true)}>Sign Out</button>
         </div>
       </nav>
+
+      {confirmOut && (
+        <div className="modal-back" onClick={() => setConfirmOut(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title" style={{ color: "var(--text)" }}>Sign out?</div>
+            <div className="modal-text">Do you want to sign out?</div>
+            <div className="modal-actions">
+              <button className="deact-btn" onClick={() => setConfirmOut(false)}>Cancel</button>
+              <button className="del-btn solid" onClick={() => { setConfirmOut(false); signOut(); }}>Sign out</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="body">
         <aside className="sidebar">
