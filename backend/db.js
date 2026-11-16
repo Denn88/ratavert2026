@@ -59,6 +59,16 @@ async function init() {
   try {
     await pool.query("INSERT INTO device (id) VALUES (1) ON CONFLICT (id) DO NOTHING");
     await pool.query("INSERT INTO settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING");
+    // Phones/computers that turned on rat detection alerts (PWA push notifications).
+    await pool.query(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+      endpoint   text PRIMARY KEY,
+      username   text NOT NULL,
+      p256dh     text NOT NULL,
+      auth       text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )`);
+    // Only this server (database owner) reads it; block Supabase's public API.
+    await pool.query("ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY");
 
     // Seed a first admin account only if the accounts table is completely empty.
     const { c } = await one("SELECT COUNT(*)::int AS c FROM accounts");

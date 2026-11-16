@@ -17,6 +17,7 @@ const multer = require("multer");
 const uuid = () => require("crypto").randomUUID();
 const { WebSocketServer } = require("ws");
 const { createClient } = require("@supabase/supabase-js");
+const webpush = require("web-push");
 const db = require("./db");
 
 const PORT = process.env.PORT || 4000;
@@ -34,6 +35,22 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 });
 const photoBucket = () => supabase.storage.from(PHOTO_BUCKET);
+
+// Push notifications (PWA). Optional: without the VAPID keys the server still
+// runs normally, the alerts are just switched off.
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
+let pushReady = false;
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  try {
+    webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:admin@ratavert.app", VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    pushReady = true;
+  } catch (err) {
+    console.warn("[push] Invalid VAPID keys, notifications are off:", err.message);
+  }
+} else {
+  console.warn("[push] VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY not set, notifications are off.");
+}
 
 // ── small helpers ───────────────────────────────────────────────────────────
 // Any date-like value -> millisecond-precision ISO string, or null if it is not a real date.
@@ -356,6 +373,7 @@ async function purgeAccountData(client, u, extraDevs = []) {
   await client.query("DELETE FROM detections WHERE id = ANY($1::text[])", [detIds]);
   await client.query("DELETE FROM weekly_reports WHERE device_owner = $1 OR device_id = ANY($2::int[])", [u, devs]);
   await client.query("UPDATE device SET owner = NULL WHERE owner = $1", [u]);
+  await client.query("DELETE FROM push_subscriptions WHERE username = $1", [u]);
   return dets.map((d) => d.photo_path).filter(Boolean);
 }
 
@@ -935,6 +953,7 @@ app.post(
     const trgRows = await db.many(`${TRIGGER_SELECT} WHERE t.detection_id = $1 ORDER BY t.created_at`, [id]);
     for (const t of trgRows) broadcast("trigger_ack", triggerToLogEntry(t), req.deviceId);
     res.status(201).json({ id });
+    sendDetectionPush(req.deviceId, detRow); // after replying, so the Pi is never slowed down
   })
 );
 
@@ -993,6 +1012,81 @@ app.get(
 );
 
 // ── health check ─────────────────────────────────────────────────────────────
+// ── push notifications ───────────────────────────────────────────────────────
+app.get("/api/push/public-key", (req, res) => {
+  if (!pushReady) return res.status(503).json({ error: "Notifications are not set up on the server yet" });
+  res.json({ publicKey: VAPID_PUBLIC_KEY });
+});
+
+app.post(
+  "/api/push/subscribe",
+  requireUser,
+  wrap(async (req, res) => {
+    const sub = (req.body && req.body.subscription) || {};
+    const keys = sub.keys || {};
+    if (typeof sub.endpoint !== "string" || !/^https:\/\//.test(sub.endpoint) || !keys.p256dh || !keys.auth) {
+      return res.status(400).json({ error: "Invalid push subscription" });
+    }
+    await db.query(
+      `INSERT INTO push_subscriptions (endpoint, username, p256dh, auth) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (endpoint) DO UPDATE SET username = EXCLUDED.username, p256dh = EXCLUDED.p256dh, auth = EXCLUDED.auth`,
+      [sub.endpoint, req.user.username, String(keys.p256dh), String(keys.auth)]
+    );
+    res.status(201).json({ ok: true });
+  })
+);
+
+// No login needed: the endpoint itself is a long secret URL only that browser knows,
+// and this runs during sign-out after the token is gone.
+app.post(
+  "/api/push/unsubscribe",
+  wrap(async (req, res) => {
+    const endpoint = req.body && req.body.endpoint;
+    if (typeof endpoint !== "string") return res.status(400).json({ error: "endpoint is required" });
+    await db.query("DELETE FROM push_subscriptions WHERE endpoint = $1", [endpoint]);
+    res.json({ ok: true });
+  })
+);
+
+// Sends an alert to the device's owner and to every admin. Never throws.
+async function sendDetectionPush(deviceId, detRow) {
+  if (!pushReady) return;
+  try {
+    const subs = await db.many(
+      `SELECT s.endpoint, s.p256dh, s.auth FROM push_subscriptions s
+       JOIN accounts a ON a.username = s.username AND a.active = true
+       WHERE a.role = 'admin' OR a.username = (SELECT owner FROM device WHERE id = $1)`,
+      [deviceId]
+    );
+    if (!subs.length) return;
+    const dev = await db.one("SELECT * FROM device WHERE id = $1", [deviceId]).catch(() => null);
+    const conf = detRow && detRow.confidence != null ? ` (${Math.round(Number(detRow.confidence) * (Number(detRow.confidence) <= 1 ? 100 : 1))}% confidence)` : "";
+    const where = dev && dev.name ? ` at ${dev.name}` : "";
+    const payload = JSON.stringify({
+      title: "🐀 Rat detected",
+      body: `A rat was detected${where}${conf}. Deterrents were triggered.`,
+      tag: `ratavert-detection-${deviceId}`,
+      url: "/",
+    });
+    await Promise.all(
+      subs.map((s) =>
+        webpush
+          .sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600 })
+          .catch(async (err) => {
+            // 404/410 = the phone turned notifications off or uninstalled the app.
+            if (err.statusCode === 404 || err.statusCode === 410) {
+              await db.query("DELETE FROM push_subscriptions WHERE endpoint = $1", [s.endpoint]).catch(() => {});
+            } else {
+              console.warn("[push] send failed:", err.statusCode || "", err.message);
+            }
+          })
+      )
+    );
+  } catch (err) {
+    console.error("[push]", err.message);
+  }
+}
+
 app.get("/api/health", (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
 // ── error handler (must be last) ─────────────────────────────────────────────

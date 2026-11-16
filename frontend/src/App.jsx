@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { api, connectEvents, getToken, getStoredUser, storeSession, clearSession } from "./api.js";
+import { onInstallChange, canPromptInstall, promptInstall, isStandalone, isIOS, pushSupported, pushEnabledHere, enablePush, disablePush } from "./pwa.js";
 
 const FONT_LINK = document.createElement("link");
 FONT_LINK.rel = "stylesheet";
@@ -110,6 +112,23 @@ const css = `
   body[data-theme="light"] .land-foot { background:rgba(238,244,240,.6); }
   .land-foot-brand { color:var(--dim); letter-spacing:2px; }
   .land-foot-copy  { color:var(--muted); }
+
+  /* ─── PWA: install button, install help, offline screen ── */
+  .cta-s { padding:14px 28px; border-radius:9px; font-size:15px; font-weight:700;
+    background:transparent; border:1px solid var(--accent); color:var(--accent); cursor:pointer; transition:all .2s;
+    font-family:var(--font-body); display:inline-flex; align-items:center; gap:8px; }
+  .cta-s:hover { background:rgba(16,185,129,.08); transform:translateY(-2px); }
+  .pwa-ov { position:fixed; inset:0; z-index:400; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:20px; animation:fadeIn .2s ease; }
+  .pwa-box { width:100%; max-width:380px; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px; box-shadow:0 30px 80px rgba(0,0,0,.5); text-align:left; }
+  .pwa-box h3 { font-size:17px; margin-bottom:6px; color:var(--text); }
+  .pwa-box p { font-size:14px; color:var(--dim); line-height:1.6; }
+  .pwa-box ol { margin:12px 0 18px 20px; font-size:14px; color:var(--text); line-height:1.8; }
+  .pwa-box .lbtn { width:100%; }
+  .offline-screen { position:fixed; inset:0; z-index:500; background:var(--bg); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; gap:14px; padding:24px; }
+  .offline-screen img { width:110px; height:110px; opacity:.85; }
+  .offline-screen h2 { font-size:22px; color:var(--text); }
+  .offline-screen p { font-size:14px; color:var(--dim); max-width:320px; line-height:1.6; }
 
   /* ─── LOGIN ── */
   .login-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center;
@@ -758,6 +777,78 @@ function PasswordField({ value, onChange, placeholder, onKeyDown, className = "l
 }
 
 // ── Landing ───────────────────────────────────────────────────────────────────
+// ── Install App (PWA) ─────────────────────────────────────────────────────────
+// Android/desktop Chrome: opens the browser's own install dialog.
+// iPhone/iPad (no install dialog exists there): shows Add to Home Screen steps.
+function InstallAppButton() {
+  const [, force] = useState(0);
+  const [help, setHelp] = useState(false);
+  useEffect(() => onInstallChange(() => force((v) => v + 1)), []);
+  if (isStandalone()) return null; // already running as the installed app
+  async function onClick() {
+    if (canPromptInstall()) await promptInstall();
+    else setHelp(true);
+  }
+  return (
+    <>
+      <button className="cta-s" onClick={onClick}>⬇ Install App</button>
+      {help && createPortal(
+        <div className="pwa-ov" onClick={() => setHelp(false)}>
+          <div className="pwa-box" onClick={(e) => e.stopPropagation()}>
+            <h3>Install RatAvert</h3>
+            {isIOS() ? (
+              <>
+                <p>On iPhone or iPad, open this page in Safari, then:</p>
+                <ol>
+                  <li>Tap the Share button (□↑) at the bottom</li>
+                  <li>Scroll down and tap <b>Add to Home Screen</b></li>
+                  <li>Tap <b>Add</b></li>
+                </ol>
+              </>
+            ) : (
+              <>
+                <p>Your browser did not offer the install dialog. You can still install it:</p>
+                <ol>
+                  <li>Open the browser menu (⋮)</li>
+                  <li>Tap <b>Install app</b> or <b>Add to Home screen</b></li>
+                </ol>
+                <p style={{ marginBottom: 16 }}>If you already installed RatAvert, open it from your home screen or app list.</p>
+              </>
+            )}
+            <button className="lbtn lbtn-solid" onClick={() => setHelp(false)}>Got it</button>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
+// ── Offline screen ────────────────────────────────────────────────────────────
+// Everything on the dashboard is live data from the backend, so with no internet
+// we show this screen instead of empty or outdated numbers.
+function useOnline() {
+  const [online, setOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off); };
+  }, []);
+  return online;
+}
+function OfflineScreen() {
+  return (
+    <div className="offline-screen">
+      <img src="/icon-192.png" alt="RatAvert" />
+      <h2>You're offline</h2>
+      <p>RatAvert needs an internet connection to show live detections, triggers and reports. It will reconnect automatically once you're back online.</p>
+      <button className="lbtn lbtn-solid" onClick={() => window.location.reload()}>Try again</button>
+    </div>
+  );
+}
+
 function LandingPage({ onLogin, theme, onToggleTheme }) {
   const [tick, setTick] = useState(0);
   useEffect(() => { const t = setInterval(() => setTick((v) => v + 1), 2000); return () => clearInterval(t); }, []);
@@ -780,6 +871,7 @@ function LandingPage({ onLogin, theme, onToggleTheme }) {
         <p className="hero-sub">Real-time detection + multi-sensory response. Lights, ultrasonic sound, a peppermint diffuser, a horn, and a vibration motor — with every detection captured on camera by your own Raspberry Pi.</p>
         <div className="hero-cta">
           <button className="cta-p" onClick={onLogin}>Open Dashboard</button>
+          <InstallAppButton />
         </div>
         <div className="hero-device">
           <div className="hd-bar">
@@ -1907,7 +1999,51 @@ function Settings({ enabled, setEnabled, detecting, setDetecting, isAdmin }) {
       </div>
       )}
 
+      <NotificationSettings />
       <ChangePasswordForm />
+    </div>
+  );
+}
+
+// ── Push notifications on/off for this phone or computer ─────────────────────
+function NotificationSettings() {
+  const [on, setOn] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const supported = pushSupported();
+  useEffect(() => { pushEnabledHere().then(setOn); }, []);
+  async function toggle() {
+    if (busy) return;
+    setBusy(true); setMsg("");
+    try {
+      if (on) { await disablePush(); setOn(false); }
+      else { await enablePush(); setOn(true); setMsg("Notifications are on for this device."); }
+    } catch (e) {
+      setMsg(e.message || "Could not change notifications.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="scard">
+      <div className="sc-title">Notifications</div>
+      <div className="srow">
+        <div>
+          <div className="sn">Rat Detection Alerts</div>
+          <div className="sd">
+            {supported
+              ? "Get a notification on this phone or computer whenever a rat is detected, even when RatAvert is closed"
+              : (isIOS() ? "On iPhone, install RatAvert to the Home Screen first, then turn this on from the installed app" : "This browser does not support notifications")}
+          </div>
+        </div>
+        {supported && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: on ? "var(--accent)" : "var(--dim)" }}>{busy ? "..." : on ? "ON" : "OFF"}</span>
+            <div className={`tog ${on ? "on" : ""}`} onClick={toggle} style={{ cursor: busy ? "wait" : "pointer" }} />
+          </div>
+        )}
+      </div>
+      {msg && <div className="sd" style={{ marginTop: 8 }}>{msg}</div>}
     </div>
   );
 }
@@ -1980,6 +2116,7 @@ function NotificationBell({ logs, deviceLabel, onOpen }) {
 export default function App() {
   const [theme, setTheme] = useState("dark");
   const [screen, setScreen] = useState(getToken() && getStoredUser() ? "dashboard" : "landing");
+  const online = useOnline();
   const [currentUser, setUser] = useState(getStoredUser()?.username || null);
   const [role, setRole] = useState(getStoredUser()?.role || null);
 
@@ -2110,6 +2247,7 @@ export default function App() {
   };
 
   function signOut() {
+    disablePush().catch(() => {}); // stop alerts for this account on this device
     clearSession();
     setScreen("landing"); setUser(null); setRole(null); setPage("dashboard");
   }
@@ -2185,6 +2323,7 @@ export default function App() {
       ];
 
   // ── Screen router ─────────────────────────────────────────────────────
+  if (!online) return <OfflineScreen />;
   if (screen === "landing") return <LandingPage onLogin={() => setScreen("login")} theme={theme} onToggleTheme={toggleTheme} />;
   if (screen === "login") return (
     <LoginPage

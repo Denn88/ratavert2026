@@ -85,6 +85,10 @@ export const api = {
   patchAccount: (username, patch) => request(`/api/accounts/${encodeURIComponent(username)}`, { method: "PATCH", body: patch }),
   deleteAccount: (username, password) => request(`/api/accounts/${encodeURIComponent(username)}`, { method: "DELETE", body: { password } }),
 
+  getPushKey: () => request("/api/push/public-key", { auth: false }),
+  subscribePush: (subscription) => request("/api/push/subscribe", { method: "POST", body: { subscription } }),
+  unsubscribePush: (endpoint) => request("/api/push/unsubscribe", { method: "POST", body: { endpoint }, auth: false }),
+
   photoUrl: (relOrAbs) => (relOrAbs && relOrAbs.startsWith("http") ? relOrAbs : `${API_URL}${relOrAbs}`),
 };
 
