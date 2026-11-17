@@ -359,7 +359,7 @@ const css = `
   .trow { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
   .tlbl { font-size:12px; color:var(--dim); }
   .tog { width:35px; height:18px; border-radius:9px; border:1px solid var(--muted);
-    background:var(--panel); cursor:pointer; position:relative; transition:all .2s; }
+    background:var(--muted); cursor:pointer; position:relative; transition:all .2s; }
   .tog.on  { background:var(--accent); border-color:var(--accent); box-shadow:0 0 8px rgba(16,185,129,.5); }
   .tog.red.on { background:var(--red); border-color:var(--red); box-shadow:0 0 8px rgba(248,113,113,.5); }
   .tog::after { content:''; position:absolute; top:2px; left:2px; width:12px; height:12px;
@@ -1899,8 +1899,8 @@ function Settings({ enabled, setEnabled, detecting, setDetecting, isAdmin }) {
         <div className="srow">
           <div><div className="sn">Detection Status</div><div className="sd">Turn automatic rat detection on or off</div></div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: detecting ? "var(--red)" : "var(--dim)" }}>{detecting ? "ON" : "OFF"}</span>
-            <div className={`tog ${detecting ? "on" : ""} red`} onClick={() => setDetecting(!detecting)} style={{ cursor: "pointer" }} />
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: detecting ? "var(--accent)" : "var(--dim)" }}>{detecting ? "ON" : "OFF"}</span>
+            <div className={`tog ${detecting ? "on" : ""}`} onClick={() => setDetecting(!detecting)} style={{ cursor: "pointer" }} />
           </div>
         </div>
         <div className="srow"><div><div className="sn">Deterrence</div><div className="sd">Lights - Ultrasonic - Diffuser - Horn - Vibrate</div></div></div>
@@ -2251,7 +2251,7 @@ export default function App() {
           {!isAdmin && (
             <>
               <div className={`rpi-panel ${rpiConnected ? "" : "offline"}`}>
-                <div className="rpi-lbl">RASPBERRY PI</div>
+                <div className="rpi-lbl">DEVICE STATUS</div>
                 <div className="rpi-stat" style={{ color: rpiConnected ? "var(--accent)" : "var(--red)" }}>
                   <span className="pdot" style={{ background: rpiConnected ? "var(--accent)" : "var(--red)" }} />
                   {!rpiLinked ? "NOT LINKED" : rpiConnected ? "ONLINE" : "OFFLINE"}
