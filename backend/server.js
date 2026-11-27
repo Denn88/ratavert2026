@@ -175,7 +175,7 @@ async function settingsPayload(deviceId = 1) {
 
 const APP_TZ = process.env.APP_TIMEZONE || "Asia/Manila";
 function fmtT(iso) {
-  return new Date(iso).toLocaleTimeString("en-GB", { timeZone: APP_TZ, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-US", { timeZone: APP_TZ, hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
 }
 function fmtD(iso) {
   return new Date(iso).toLocaleDateString("en-GB", { timeZone: APP_TZ, day: "2-digit", month: "short" });
