@@ -173,11 +173,12 @@ async function settingsPayload(deviceId = 1) {
   return { detecting: d.detecting == null ? !!s.detecting : !!d.detecting, detectionInterval: s.detection_interval };
 }
 
+const APP_TZ = process.env.APP_TIMEZONE || "Asia/Manila";
 function fmtT(iso) {
-  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-GB", { timeZone: APP_TZ, hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 function fmtD(iso) {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  return new Date(iso).toLocaleDateString("en-GB", { timeZone: APP_TZ, day: "2-digit", month: "short" });
 }
 function photoUrlFor(photoPath) {
   if (!photoPath) return null;
