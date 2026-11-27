@@ -720,18 +720,18 @@ app.get(
       "SELECT type, created_at FROM trigger_events WHERE created_at > $1 AND status != 'fail' AND ($2::int IS NULL OR device_id = $2::int)",
       [since, devId]
     );
+        const nowHour = Math.floor(Date.now() / 3600000);
     const buckets = Array.from({ length: 24 }, (_, i) => {
-      const h = new Date();
-      h.setMinutes(0, 0, 0);
-      h.setHours(h.getHours() - (23 - i));
-      return { label: `${String(h.getHours()).padStart(2, "0")}:00`, lights: 0, audio: 0, pepper: 0, last: 0, vibrate: 0, _h: h };
+      const k = nowHour - (23 - i);
+      const label = new Date(k * 3600000).toLocaleTimeString("en-US", { timeZone: APP_TZ, hour: "numeric", hour12: true });
+      return { label, lights: 0, audio: 0, pepper: 0, last: 0, vibrate: 0, _k: k };
     });
     rows.forEach((r) => {
-      const t = new Date(r.created_at);
-      const b = buckets.find((b) => b._h.getHours() === t.getHours() && b._h.getDate() === t.getDate());
+      const k = Math.floor(new Date(r.created_at).getTime() / 3600000);
+      const b = buckets.find((x) => x._k === k);
       if (b && b[r.type] !== undefined) b[r.type]++;
     });
-    res.json(buckets.map(({ _h, ...b }) => b));
+    res.json(buckets.map(({ _k, ...b }) => b));
   })
 );
 
