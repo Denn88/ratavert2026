@@ -705,8 +705,10 @@ const TYPE_META = {
 };
 const AUTO_SEQ = ["lights", "audio", "pepper"];
 
-function fmtT(d) { return new Date(d).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" }); }
-function fmtD(d) { return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }); }
+const APP_TZ = "Asia/Manila";
+function fmtT(d) { return new Date(d).toLocaleTimeString("en-US", { timeZone: APP_TZ, hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true }); }
+function fmtD(d) { return new Date(d).toLocaleDateString("en-GB", { timeZone: APP_TZ, day: "2-digit", month: "short" }); }
+function fmtDT(d) { return new Date(d).toLocaleString("en-US", { timeZone: APP_TZ, month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }); }
 function statusBadge(status) {
   if (status === "ok") return <span className="sok">● OK</span>;
   if (status === "fail") return <span className="sfail">✕ FAIL</span>;
@@ -1110,7 +1112,7 @@ function DeviceReportsPage() {
           { label: "Total Detections", val: totalDetections, color: "var(--red)", sub: "across all periods" },
           { label: "Avg / Report", val: avgPerReport, color: "var(--orange)", sub: "detections" },
           { label: "Devices", val: uniqueDevices, color: "var(--teal)", sub: "reporting accounts" },
-          { label: "Last Generated", val: lastGenerated ? new Date(lastGenerated).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "--:--", color: "var(--accent)", sub: lastGenerated ? new Date(lastGenerated).toLocaleDateString() : "no reports yet" },
+          { label: "Last Generated", val: lastGenerated ? new Date(lastGenerated).toLocaleTimeString("en-US", { timeZone: APP_TZ, hour: "numeric", minute: "2-digit", hour12: true }) : "--:--", color: "var(--accent)", sub: lastGenerated ? new Date(lastGenerated).toLocaleDateString() : "no reports yet" },
         ].map((s, i) => (
           <div key={i}><div className="si-label">{s.label}</div>
             <div className="si-val" style={{ color: s.color }}>{s.val}</div>
@@ -1228,7 +1230,7 @@ function Dashboard({ logs, chartData, enabled, counts, ratCount, detecting, rpiC
           { label: "Rats Detected", val: ratCount,                                    color: "var(--red)",                                 sub: "total events" },
           { label: "Photos Saved",  val: photoCount,                                  color: "var(--teal)",                                sub: "see Activity" },
           { label: "Raspberry Pi",  val: rpiConnected ? "ONLINE" : "OFFLINE",   color: rpiConnected ? "var(--accent)" : "var(--red)",sub: rpiConnected ? "Reporting in" : "Not connected" },
-          { label: "Last Update",   val: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }), color: "var(--accent)", sub: "real-time" },
+          { label: "Last Update",  val: new Date().toLocaleTimeString("en-US", { timeZone: APP_TZ, hour: "numeric", minute: "2-digit", hour12: true }), color: "var(--accent)", sub: "real-time" },
         ].map((s, i) => (
           <div key={i}><div className="si-label">{s.label}</div>
             <div className="si-val" style={{ color: s.color }}>{s.val}</div>
